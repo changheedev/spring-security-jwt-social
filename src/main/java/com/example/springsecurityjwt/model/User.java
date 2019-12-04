@@ -38,7 +38,7 @@ public class User{
         this.name = name;
         this.email = email;
         this.password = password;
-        this.authorities.add(AuthorityType.MEMBER);
+        this.authorities.add(AuthorityType.ROLE_MEMBER);
     }
 
     public String getUsername(){

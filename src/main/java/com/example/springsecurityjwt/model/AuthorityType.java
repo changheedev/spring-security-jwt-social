@@ -1,5 +1,5 @@
 package com.example.springsecurityjwt.model;
 
 public enum AuthorityType {
-    ADMIN, MEMBER
+    ROLE_ADMIN, ROLE_MEMBER
 }

@@ -1,8 +1,8 @@
-package com.example.springsecurityjwt.service;
+package com.example.springsecurityjwt.security;
 
 
-import com.example.springsecurityjwt.model.User;
 import com.example.springsecurityjwt.dto.UserDetailsDTO;
+import com.example.springsecurityjwt.model.User;
 import com.example.springsecurityjwt.repository.UserRepository;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
