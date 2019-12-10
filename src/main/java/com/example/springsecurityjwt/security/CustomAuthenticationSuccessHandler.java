@@ -1,10 +1,8 @@
 package com.example.springsecurityjwt.security;
 
-import com.example.springsecurityjwt.dto.AuthenticationResponse;
-import com.example.springsecurityjwt.dto.UserDetailsDTO;
-import com.example.springsecurityjwt.util.JwtUtil;
+import com.example.springsecurityjwt.authentication.AccessTokenResponse;
+import com.example.springsecurityjwt.jwt.JwtProvider;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.web.authentication.AuthenticationSuccessHandler;
@@ -16,11 +14,11 @@ import java.io.IOException;
 
 public class CustomAuthenticationSuccessHandler implements AuthenticationSuccessHandler {
 
-    private JwtUtil jwtUtil;
+    private JwtProvider jwtProvider;
     private ObjectMapper objectMapper;
 
-    public CustomAuthenticationSuccessHandler(JwtUtil jwtUtil, ObjectMapper objectMapper) {
-        this.jwtUtil = jwtUtil;
+    public CustomAuthenticationSuccessHandler(JwtProvider jwtProvider, ObjectMapper objectMapper) {
+        this.jwtProvider = jwtProvider;
         this.objectMapper = objectMapper;
     }
 
@@ -29,14 +27,14 @@ public class CustomAuthenticationSuccessHandler implements AuthenticationSuccess
                                         HttpServletResponse response,
                                         Authentication authentication) throws IOException, ServletException {
 
-        UserDetailsDTO userDetailsDTO = (UserDetailsDTO)authentication.getPrincipal();
-        AuthenticationResponse authenticationResponse = AuthenticationResponse.builder()
-                .token(jwtUtil.generateToken(userDetailsDTO))
-                .refreshToken(jwtUtil.generateRefreshToken(userDetailsDTO))
+        CustomUserDetails userDetails = (CustomUserDetails)authentication.getPrincipal();
+        AccessTokenResponse accessTokenResponse = AccessTokenResponse.builder()
+                .token(jwtProvider.generateToken(userDetails))
+                .refreshToken(jwtProvider.generateRefreshToken(userDetails))
                 .build();
 
         response.setContentType(MediaType.APPLICATION_JSON_VALUE);
-        response.getWriter().write(objectMapper.writeValueAsString(authenticationResponse));
+        response.getWriter().write(objectMapper.writeValueAsString(accessTokenResponse));
         response.setStatus(200);
     }
 }

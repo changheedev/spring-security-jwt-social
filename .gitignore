@@ -32,4 +32,4 @@ out/
 .vscode/
 
 ### User ###
-/config/application-secret.yml
+/config/application.yml

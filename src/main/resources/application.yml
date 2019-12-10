@@ -1,21 +1,3 @@
-spring:
-  profiles:
-    include:
-      - secret
-  datasource:
-    url: jdbc:mariadb://127.0.0.1:13306/exam?useSSL=false&serverTimezone=Asia/Seoul
-    username: exam
-    password: exam_pwd
-    driver-class-name: org.mariadb.jdbc.Driver
-  jpa:
-    show-sql: true
-    hibernate:
-      ddl-auto: validate
-    database-platform: org.hibernate.dialect.MariaDB103Dialect
-    properties:
-      hibernate:
-        format_sql: true
-        use_sql_comments: true
-logging:
-  level:
-    com.example.* : debug
+server:
+  servlet:
+    context-path: /api
