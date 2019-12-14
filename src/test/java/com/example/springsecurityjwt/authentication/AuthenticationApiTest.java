@@ -5,19 +5,14 @@ import com.example.springsecurityjwt.security.AuthorityType;
 import com.example.springsecurityjwt.security.CustomUserDetails;
 import com.example.springsecurityjwt.users.SignUpRequest;
 import com.example.springsecurityjwt.users.UserRepository;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
-import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
 import org.springframework.security.oauth2.core.AuthorizationGrantType;
-import org.springframework.test.context.junit.jupiter.SpringExtension;
-import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -77,7 +72,39 @@ public class AuthenticationApiTest {
         assertEquals(uriRedirectedUri.getPort(), AUTHENTICATION_REDIRECT_URI.getPort());
         assertEquals(uriRedirectedUri.getPath(), AUTHENTICATION_REDIRECT_URI.getPath());
         log.debug(code);
-        assertTrue(code.matches("[0-9a-fA-F]{8}[0-9a-fA-F]{4}[0-9a-fA-F]{4}[0-9a-fA-F]{4}[0-9a-fA-F]{12}"));
+        assertTrue(code.matches(AUTHORIZATION_CODE_REG_EXP));
+    }
+
+    @Test
+    @Transactional
+    public void 추가_정보_입력_후_Authorization_Code_리디렉션_테스트() throws Exception {
+
+        //given
+        OAuth2AdditionalAttributesRequest oAuth2AdditionalAttributesRequest = OAuth2AdditionalAttributesRequest.builder()
+                .id("1234567")
+                .registrationId("google")
+                .name("ChangHee")
+                .email("test@gmail.com")
+                .build();
+
+        //when
+        MvcResult result = mockMvc.perform(post("/oauth2/attributes")
+                .cookie(new Cookie("redirect_uri", AUTHENTICATION_REDIRECT_URI.toString()))
+                .contentType(MediaType.APPLICATION_JSON_VALUE)
+                .content(jsonUtils.toJson(oAuth2AdditionalAttributesRequest)))
+                .andExpect(status().isFound())
+                .andDo(print())
+                .andReturn();
+
+        String strRedirectedUri = result.getResponse().getRedirectedUrl();
+
+        //then
+        URI uriRedirectedUri = URI.create(strRedirectedUri);
+        String query = uriRedirectedUri.getQuery();
+        String code = query.substring(query.indexOf("=") + 1);
+
+        log.debug(code);
+        assertTrue(code.matches(AUTHORIZATION_CODE_REG_EXP));
     }
 
     @Test
@@ -141,7 +168,7 @@ public class AuthenticationApiTest {
     private void requestSignUpApi(SignUpRequest signUpRequest) throws Exception {
         MvcResult mvcResult = mockMvc.perform(post("/users")
                 .contentType(MediaType.APPLICATION_JSON_VALUE)
-                .content(objectMapper.writeValueAsString(signUpRequest)))
+                .content(jsonUtils.toJson(signUpRequest)))
                 .andExpect(status().isOk())
                 .andDo(print())
                 .andReturn();
@@ -157,7 +184,7 @@ public class AuthenticationApiTest {
 
         MvcResult mvcResult = mockMvc.perform(post("/authenticate")
                 .contentType(MediaType.APPLICATION_JSON_VALUE)
-                .content(objectMapper.writeValueAsString(authenticationRequest)))
+                .content(jsonUtils.toJson(authenticationRequest)))
                 .andExpect(status().isFound()) //302 Redirect
                 .andExpect(redirectedUrlPattern(redirectUrl + "?code={[0-9a-fA-F]{8}[0-9a-fA-F]{4}[0-9a-fA-F]{4}[0-9a-fA-F]{4}[0-9a-fA-F]{12}}"))
                 .andDo(print()).andReturn();
@@ -169,12 +196,12 @@ public class AuthenticationApiTest {
 
         MvcResult mvcResult = mockMvc.perform(post("/oauth2/token")
                 .contentType(MediaType.APPLICATION_JSON_VALUE)
-                .content(objectMapper.writeValueAsString(authorizationRequest)))
+                .content(jsonUtils.toJson(authorizationRequest)))
                 .andExpect(status().isOk())
                 .andDo(print()).andReturn();
 
         String result = mvcResult.getResponse().getContentAsString();
-        AccessTokenResponse accessTokenResponse = objectMapper.readValue(result, AccessTokenResponse.class);
+        AccessTokenResponse accessTokenResponse = jsonUtils.fromJson(result, AccessTokenResponse.class);
 
         return accessTokenResponse;
     }

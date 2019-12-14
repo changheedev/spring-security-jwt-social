@@ -1,5 +1,6 @@
 package com.example.springsecurityjwt.authentication;
 
+import com.example.springsecurityjwt.BaseEntity;
 import lombok.AccessLevel;
 import lombok.Builder;
 import lombok.Getter;
@@ -11,11 +12,8 @@ import javax.persistence.*;
 @Table(name="TBL_AUTHORIZATION_CODE")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-public class AuthorizationCode {
+public class AuthorizationCode extends BaseEntity {
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
     private String code;
     private String username;
 

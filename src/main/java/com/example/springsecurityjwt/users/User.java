@@ -1,5 +1,6 @@
 package com.example.springsecurityjwt.users;
 
+import com.example.springsecurityjwt.BaseEntity;
 import com.example.springsecurityjwt.security.AuthorityType;
 import lombok.AccessLevel;
 import lombok.Builder;
@@ -14,11 +15,7 @@ import java.util.List;
 @Getter
 @Table(name = "TBL_USER")
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-public class User{
-
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+public class User extends BaseEntity {
 
     @Column(nullable = false, length = 20)
     private String name;

@@ -1,5 +1,6 @@
 package com.example.springsecurityjwt.oauth;
 
+import com.example.springsecurityjwt.BaseEntity;
 import lombok.AccessLevel;
 import lombok.Builder;
 import lombok.Getter;
@@ -11,11 +12,7 @@ import javax.persistence.*;
 @Table(name = "TBL_OAUTH_ACCOUNT")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-public class OAuthAccount {
-
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+public class OAuth2Account extends BaseEntity {
 
     private Long userId;
 
