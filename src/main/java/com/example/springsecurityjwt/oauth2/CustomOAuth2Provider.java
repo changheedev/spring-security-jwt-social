@@ -1,4 +1,4 @@
-package com.example.springsecurityjwt.security.oauth;
+package com.example.springsecurityjwt.oauth2;
 
 import org.springframework.security.oauth2.client.registration.ClientRegistration;
 import org.springframework.security.oauth2.core.AuthorizationGrantType;

@@ -1,4 +1,4 @@
-package com.example.springsecurityjwt.security.oauth;
+package com.example.springsecurityjwt.oauth2;
 
 import com.example.springsecurityjwt.security.util.CookieUtils;
 import com.nimbusds.oauth2.sdk.util.StringUtils;

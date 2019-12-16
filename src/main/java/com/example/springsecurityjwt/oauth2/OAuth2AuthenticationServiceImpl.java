@@ -1,0 +1,130 @@
+package com.example.springsecurityjwt.oauth2;
+
+import com.example.springsecurityjwt.security.CustomUserDetails;
+import com.example.springsecurityjwt.users.User;
+import com.example.springsecurityjwt.users.UserRepository;
+import com.example.springsecurityjwt.users.UserType;
+import com.example.springsecurityjwt.util.JsonUtils;
+import com.google.gson.JsonObject;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.*;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
+import org.springframework.security.oauth2.client.registration.ClientRegistration;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.LinkedMultiValueMap;
+import org.springframework.util.MultiValueMap;
+import org.springframework.web.client.RestTemplate;
+
+import java.util.Map;
+
+@Service
+@Slf4j
+public class OAuth2AuthenticationServiceImpl implements OAuth2AuthenticationService {
+
+    private final UserRepository userRepository;
+    private final OAuth2AccountRepository oAuth2AccountRepository;
+    private final RestTemplate restTemplate;
+
+
+    public OAuth2AuthenticationServiceImpl(UserRepository userRepository, OAuth2AccountRepository oAuth2AccountRepository, RestTemplate restTemplate) {
+        this.userRepository = userRepository;
+        this.oAuth2AccountRepository = oAuth2AccountRepository;
+        this.restTemplate = restTemplate;
+    }
+
+    @Override
+    public String getOAuth2AccessToken(OAuth2AccessTokenRequest oAuth2AccessTokenRequest) {
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
+
+        ClientRegistration clientRegistration = oAuth2AccessTokenRequest.getClientRegistration();
+
+        MultiValueMap<String, String> params = new LinkedMultiValueMap<>();
+        params.add("client_id", clientRegistration.getClientId());
+        params.add("client_secret", clientRegistration.getClientSecret());
+        params.add("grant_type", "authorization_code");
+        params.add("code", oAuth2AccessTokenRequest.getCode());
+        params.add("state", oAuth2AccessTokenRequest.getState());
+        params.add("redirect_uri", oAuth2AccessTokenRequest.getRedirectUri());
+
+        HttpEntity<MultiValueMap<String, String>> httpEntity = new HttpEntity<>(params, headers);
+
+        ResponseEntity<String> entity = restTemplate.exchange(clientRegistration.getProviderDetails().getTokenUri(), HttpMethod.POST, httpEntity, String.class);
+
+        if (entity.getStatusCodeValue() != 200)
+            throw new OAuth2AuthenticationFailedException(String.format("Get access token failed.\nProvider: %d, Code: %d \nDetails : %s", clientRegistration.getRegistrationId(), entity.getStatusCodeValue(), entity.getBody()));
+
+        log.debug("Get access token result code (provider: {}) : {}", clientRegistration.getRegistrationId(), entity.getStatusCodeValue());
+        JsonObject jsonObj = JsonUtils.parse(entity.getBody()).getAsJsonObject();
+        String accessToken = jsonObj.get("access_token").getAsString();
+        return accessToken;
+    }
+
+    @Override
+    public OAuth2UserInfo getOAuth2UserInfo(OAuth2UserInfoRequest oAuth2UserInfoRequest) {
+
+        ClientRegistration clientRegistration = oAuth2UserInfoRequest.getClientRegistration();
+
+        HttpHeaders headers = new HttpHeaders();
+
+        headers.add("Authorization", "Bearer " + oAuth2UserInfoRequest.getAccessToken());
+        headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
+
+        HttpEntity<?> httpEntity = new HttpEntity<>(headers);
+
+        ResponseEntity<String> entity = restTemplate.exchange(clientRegistration.getProviderDetails().getUserInfoEndpoint().getUri(), HttpMethod.GET, httpEntity, String.class);
+
+        if (entity.getStatusCodeValue() != 200)
+            throw new OAuth2AuthenticationFailedException(String.format("Get access token failed.\nProvider: %d, Code: %d \nDetails : %s", clientRegistration.getRegistrationId(), entity.getStatusCodeValue(), entity.getBody()));
+
+        Map<String, Object> userAttributes = JsonUtils.fromJson(entity.getBody(), Map.class);
+
+        OAuth2UserInfo userInfo = OAuth2UserInfoFactory.getOAuth2UserInfo(clientRegistration.getRegistrationId(), userAttributes);
+        return userInfo;
+    }
+
+    @Override
+    public boolean findOAuth2Account(String registrationId, String providerId) {
+        return oAuth2AccountRepository.existsByProviderAndProviderId(registrationId, providerId);
+    }
+
+    @Override
+    @Transactional
+    public UserDetails loadUser(String registrationId, OAuth2UserInfo userInfo) {
+        User user = userRepository.findByEmail(userInfo.getEmail())
+                .orElse(userRepository.save(User.builder()
+                        .name(userInfo.getName())
+                        .email(userInfo.getEmail())
+                        .type(UserType.OAUTH)
+                        .build()));
+
+        OAuth2Account oAuth2Account = oAuth2AccountRepository.findByProviderAndProviderId(registrationId, userInfo.getId())
+                .orElse(oAuth2AccountRepository.save(OAuth2Account.builder()
+                        .provider(registrationId)
+                        .providerId(userInfo.getId())
+                        .userId(user.getId())
+                        .build()));
+
+        return CustomUserDetails.builder().id(user.getId()).name(user.getName()).email(user.getEmail()).authorities(user.getAuthorities()).build();
+    }
+
+    @Override
+    public UserDetails linkAccount(String targetUsername, String registrationId, OAuth2UserInfo userInfo) {
+
+        User user = userRepository.findByEmail(targetUsername)
+                .orElseThrow(() -> new UsernameNotFoundException("찾을 수 없는 회원입니다."));
+
+        OAuth2Account oAuth2Account = OAuth2Account.builder()
+                .provider(registrationId)
+                .providerId(userInfo.getId())
+                .userId(user.getId())
+                .build();
+
+        oAuth2AccountRepository.save(oAuth2Account);
+
+        return CustomUserDetails.builder().id(user.getId()).name(user.getName()).email(user.getEmail()).authorities(user.getAuthorities()).build();
+    }
+}

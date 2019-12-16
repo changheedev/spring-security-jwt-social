@@ -1,6 +1,7 @@
 package com.example.springsecurityjwt.authentication;
 
 import com.example.springsecurityjwt.jwt.JwtProvider;
+import com.example.springsecurityjwt.oauth2.OAuth2AdditionalAttributesRequest;
 import com.example.springsecurityjwt.security.AuthorityType;
 import com.example.springsecurityjwt.security.CustomUserDetails;
 import com.example.springsecurityjwt.users.SignUpRequest;

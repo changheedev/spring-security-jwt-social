@@ -1,6 +1,5 @@
-package com.example.springsecurityjwt.oauth;
+package com.example.springsecurityjwt.oauth2;
 
-import com.example.springsecurityjwt.security.oauth.CustomOAuth2Provider;
 import org.springframework.boot.autoconfigure.security.oauth2.client.OAuth2ClientProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;

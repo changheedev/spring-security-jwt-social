@@ -1,4 +1,4 @@
-package com.example.springsecurityjwt.oauth;
+package com.example.springsecurityjwt.oauth2;
 
 import java.util.Map;
 

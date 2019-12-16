@@ -1,4 +1,4 @@
-package com.example.springsecurityjwt.oauth;
+package com.example.springsecurityjwt.oauth2;
 
 import lombok.Getter;
 import lombok.Setter;
@@ -6,7 +6,7 @@ import org.springframework.security.oauth2.client.registration.ClientRegistratio
 
 @Getter
 @Setter
-public class AbstractOAuth2Request {
+public abstract class AbstractOAuth2Request {
     private ClientRegistration clientRegistration;
 
     public AbstractOAuth2Request(ClientRegistration clientRegistration) {

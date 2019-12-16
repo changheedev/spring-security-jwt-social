@@ -1,10 +1,10 @@
-package com.example.springsecurityjwt.oauth;
+package com.example.springsecurityjwt.oauth2;
 
 import java.util.Map;
 
-public class GoogleOAuth2UserInfo extends OAuth2UserInfo {
+public class DefaultOAuth2UserInfo  extends OAuth2UserInfo {
 
-    public GoogleOAuth2UserInfo(Map<String, Object> attributes) {
+    public DefaultOAuth2UserInfo(Map<String, Object> attributes) {
         super(attributes);
     }
 
@@ -23,3 +23,4 @@ public class GoogleOAuth2UserInfo extends OAuth2UserInfo {
         return (String) attributes.get("email");
     }
 }
+
