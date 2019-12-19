@@ -12,6 +12,4 @@ public interface OAuth2AuthenticationService {
     OAuth2UserInfo getOAuth2UserInfo(OAuth2UserInfoRequest oAuth2UserInfoRequest);
     UserDetails loadUser(String registrationId, OAuth2UserInfo userInfo);
     UserDetails linkAccount(String targetUsername, String registrationId, OAuth2UserInfo userInfo);
-    Long saveAsTemporaryAccount(String registrationId, OAuth2UserInfo userInfo);
-    UserDetails completeTemporaryAccountAuthorization(Long tid, Map<String, Object> attributes);
 }

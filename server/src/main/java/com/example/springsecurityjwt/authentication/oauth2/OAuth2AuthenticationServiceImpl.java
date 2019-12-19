@@ -2,8 +2,6 @@ package com.example.springsecurityjwt.authentication.oauth2;
 
 import com.example.springsecurityjwt.authentication.oauth2.account.OAuth2Account;
 import com.example.springsecurityjwt.authentication.oauth2.account.OAuth2AccountRepository;
-import com.example.springsecurityjwt.authentication.oauth2.account.TempOAuth2Account;
-import com.example.springsecurityjwt.authentication.oauth2.account.TempOAuth2AccountRepository;
 import com.example.springsecurityjwt.authentication.oauth2.userInfo.OAuth2UserInfo;
 import com.example.springsecurityjwt.authentication.oauth2.userInfo.OAuth2UserInfoFactory;
 import com.example.springsecurityjwt.security.CustomUserDetails;
@@ -31,14 +29,12 @@ public class OAuth2AuthenticationServiceImpl implements OAuth2AuthenticationServ
 
     private final UserRepository userRepository;
     private final OAuth2AccountRepository oAuth2AccountRepository;
-    private final TempOAuth2AccountRepository tempOAuth2AccountRepository;
     private final RestTemplate restTemplate;
 
 
-    public OAuth2AuthenticationServiceImpl(UserRepository userRepository, OAuth2AccountRepository oAuth2AccountRepository, TempOAuth2AccountRepository tempOAuth2AccountRepository, RestTemplate restTemplate) {
+    public OAuth2AuthenticationServiceImpl(UserRepository userRepository, OAuth2AccountRepository oAuth2AccountRepository, RestTemplate restTemplate) {
         this.userRepository = userRepository;
         this.oAuth2AccountRepository = oAuth2AccountRepository;
-        this.tempOAuth2AccountRepository = tempOAuth2AccountRepository;
         this.restTemplate = restTemplate;
     }
 
@@ -137,24 +133,5 @@ public class OAuth2AuthenticationServiceImpl implements OAuth2AuthenticationServ
         oAuth2AccountRepository.save(oAuth2Account);
 
         return CustomUserDetails.builder().id(user.getId()).name(user.getName()).email(user.getEmail()).authorities(user.getAuthorities()).build();
-    }
-
-    /* 소셜 계정 정보를 임시계정 상태로 저장하고 id 값을 리턴한다. */
-    @Override
-    @Transactional
-    public Long saveAsTemporaryAccount(String registrationId, OAuth2UserInfo userInfo) {
-        TempOAuth2Account tempOAuth2Account = TempOAuth2Account.builder().providerId(userInfo.getId()).provider(registrationId).name(userInfo.getName()).build();
-        tempOAuth2AccountRepository.save(tempOAuth2Account);
-        return tempOAuth2Account.getId();
-    }
-
-    /* 추가 정보를 이용하여 임시 계정의 인증을 완료시킨다. */
-    @Override
-    @Transactional
-    public UserDetails completeTemporaryAccountAuthorization(Long tid, Map<String, Object> attributes) {
-        TempOAuth2Account tempOAuth2Account = tempOAuth2AccountRepository.findById(tid).orElseThrow(()->new OAuth2AuthenticationFailedException("일치하는 정보를 찾을 수 없습니다."));
-        attributes.put("id", tempOAuth2Account.getProviderId());
-        attributes.put("name", tempOAuth2Account.getName());
-        return loadUser(tempOAuth2Account.getProvider(), OAuth2UserInfoFactory.getOAuth2UserInfo(tempOAuth2Account.getProvider(), attributes));
     }
 }
