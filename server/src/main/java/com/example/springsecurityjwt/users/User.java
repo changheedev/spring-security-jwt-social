@@ -20,10 +20,11 @@ public class User extends BaseEntity {
     @Column(nullable = false, length = 20)
     private String name;
 
-    @Column(nullable = false)
     private String email;
 
     @Column(nullable = false)
+    private String username;
+
     private String password;
 
     @Enumerated(value = EnumType.STRING)
@@ -35,7 +36,8 @@ public class User extends BaseEntity {
     private List<AuthorityType> authorities = new ArrayList<>();
 
     @Builder
-    public User(String name, String email, String password, UserType type){
+    public User(String username, String name, String email, String password, UserType type){
+        this.username = username;
         this.name = name;
         this.email = email;
         this.password = password;

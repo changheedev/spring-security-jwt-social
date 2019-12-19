@@ -49,7 +49,7 @@ public class UsersApiTest {
         SignUpRequest signUpRequest = registerTestUser(email, name, password);
 
         //then
-        Optional<User> user = userRepository.findByEmail(signUpRequest.getEmail());
+        Optional<User> user = userRepository.findByUsername(signUpRequest.getEmail());
         assertTrue(user.isPresent());
     }
 

@@ -35,6 +35,7 @@ public class OAuth2ServiceTest extends SpringTestSupport {
     public void 중복된_이메일이_존재할_경우_계정_연동_테스트() {
         //given
         User user = User.builder()
+                .username("test@email.com")
                 .email("test@email.com")
                 .name("ChangHee")
                 .password(passwordEncoder.encode("password"))
@@ -70,6 +71,7 @@ public class OAuth2ServiceTest extends SpringTestSupport {
     public void 이메일이_중복되지_않는_경우_계정_생성_테스트() {
         //given
         User user = User.builder()
+                .username("test@email.com")
                 .email("test@email.com")
                 .name("ChangHee")
                 .password(passwordEncoder.encode("password"))

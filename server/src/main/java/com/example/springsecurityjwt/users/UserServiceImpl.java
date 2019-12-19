@@ -16,12 +16,13 @@ public class UserServiceImpl implements UserService {
 
     public void signUpService(SignUpRequest signUpRequest) {
 
-        if(userRepository.findByEmail(signUpRequest.getEmail()).isPresent())
+        if(userRepository.findByUsername(signUpRequest.getEmail()).isPresent())
             throw new DuplicatedUsernameException("이미 가입된 이메일입니다.");
 
         User user = User.builder()
-                .email(signUpRequest.getEmail())
+                .username(signUpRequest.getEmail())
                 .name(signUpRequest.getName())
+                .email(signUpRequest.getEmail())
                 .password(passwordEncoder.encode(signUpRequest.getPassword()))
                 .type(UserType.DEFAULT)
                 .build();

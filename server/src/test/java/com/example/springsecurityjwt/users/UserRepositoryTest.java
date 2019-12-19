@@ -28,6 +28,7 @@ public class UserRepositoryTest {
     @Transactional
     public void insertUserTest(){
         User user = User.builder()
+                .username("test@email.com")
                 .name("changhee")
                 .email("test@email.com")
                 .password(passwordEncoder.encode("password"))

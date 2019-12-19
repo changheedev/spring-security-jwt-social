@@ -21,12 +21,13 @@ public class CustomUserDetails implements UserDetails {
     private Long id;
     private String name;
     private String email;
+    private String username;
     private String password;
     private List<AuthorityType> authorities;
 
     @Override
     public String getUsername() {
-        return email;
+        return username;
     }
 
     @Override

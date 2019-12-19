@@ -98,8 +98,9 @@ public class OAuth2AuthenticationServiceImpl implements OAuth2AuthenticationServ
     @Override
     @Transactional
     public UserDetails loadUser(String registrationId, OAuth2UserInfo userInfo) {
-        User user = userRepository.findByEmail(userInfo.getEmail())
+        User user = userRepository.findByUsername(userInfo.getEmail())
                 .orElse(userRepository.save(User.builder()
+                        .username(registrationId + "_" + userInfo.getId())
                         .name(userInfo.getName())
                         .email(userInfo.getEmail())
                         .type(UserType.OAUTH)
@@ -112,7 +113,7 @@ public class OAuth2AuthenticationServiceImpl implements OAuth2AuthenticationServ
                         .userId(user.getId())
                         .build()));
 
-        return CustomUserDetails.builder().id(user.getId()).name(user.getName()).email(user.getEmail()).authorities(user.getAuthorities()).build();
+        return CustomUserDetails.builder().id(user.getId()).username(user.getUsername()).name(user.getName()).email(user.getEmail()).authorities(user.getAuthorities()).build();
     }
 
     @Override
@@ -121,7 +122,7 @@ public class OAuth2AuthenticationServiceImpl implements OAuth2AuthenticationServ
         if(oAuth2AccountRepository.existsByProviderAndProviderId(registrationId, userInfo.getId()))
             throw new OAuth2LinkAccountFailedException("이미 연동된 계정입니다.");
 
-        User user = userRepository.findByEmail(targetUsername)
+        User user = userRepository.findByUsername(targetUsername)
                 .orElseThrow(() -> new UsernameNotFoundException("찾을 수 없는 회원입니다."));
 
         OAuth2Account oAuth2Account = OAuth2Account.builder()
@@ -132,6 +133,6 @@ public class OAuth2AuthenticationServiceImpl implements OAuth2AuthenticationServ
 
         oAuth2AccountRepository.save(oAuth2Account);
 
-        return CustomUserDetails.builder().id(user.getId()).name(user.getName()).email(user.getEmail()).authorities(user.getAuthorities()).build();
+        return CustomUserDetails.builder().id(user.getId()).username(user.getUsername()).name(user.getName()).email(user.getEmail()).authorities(user.getAuthorities()).build();
     }
 }
