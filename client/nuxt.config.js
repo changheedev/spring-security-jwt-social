@@ -38,5 +38,11 @@ module.exports = {
     }
   },
 
-  modules: ["bootstrap-vue/nuxt"]
+  modules: ["bootstrap-vue/nuxt", "@nuxtjs/axios"],
+  axios: {
+    proxy: true
+  },
+  proxy: {
+    "/api/": "http://localhost:8080"
+  }
 };
