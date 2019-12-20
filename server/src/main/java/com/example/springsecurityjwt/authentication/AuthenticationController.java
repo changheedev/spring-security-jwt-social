@@ -3,6 +3,7 @@ package com.example.springsecurityjwt.authentication;
 import com.example.springsecurityjwt.authentication.oauth2.*;
 import com.example.springsecurityjwt.authentication.oauth2.userInfo.OAuth2UserInfo;
 import com.example.springsecurityjwt.jwt.JwtProvider;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -23,21 +24,13 @@ import java.util.UUID;
 
 @RestController
 @Slf4j
-public class AuthenticationController{
-
-    private final String OAUTH2_AUTHORIZATION_COOKIE_NAME = "oauth2_params";
+@RequiredArgsConstructor
+public class AuthenticationController {
 
     private final AuthenticationService authenticationService;
     private final OAuth2AuthenticationService oAuth2AuthenticationService;
     private final ClientRegistrationRepository clientRegistrationRepository;
     private final JwtProvider jwtProvider;
-
-    public AuthenticationController(AuthenticationService authenticationService, OAuth2AuthenticationService oAuth2AuthenticationService, ClientRegistrationRepository clientRegistrationRepository, JwtProvider jwtProvider) {
-        this.authenticationService = authenticationService;
-        this.oAuth2AuthenticationService = oAuth2AuthenticationService;
-        this.clientRegistrationRepository = clientRegistrationRepository;
-        this.jwtProvider = jwtProvider;
-    }
 
     /* 사용자의 계정을 인증하고 로그인 토큰을 발급해주는 컨트롤러 */
     @PostMapping("/authorize")

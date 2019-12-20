@@ -3,6 +3,7 @@ package com.example.springsecurityjwt.jwt.filter;
 import com.example.springsecurityjwt.security.CustomUserDetails;
 import com.example.springsecurityjwt.security.CustomUserDetailsService;
 import com.example.springsecurityjwt.jwt.JwtProvider;
+import lombok.RequiredArgsConstructor;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
@@ -16,15 +17,11 @@ import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
 
 @Component
+@RequiredArgsConstructor
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
-    private CustomUserDetailsService userDetailsService;
-    private JwtProvider jwtProvider;
-
-    public JwtAuthenticationFilter(CustomUserDetailsService userDetailsService, JwtProvider jwtProvider) {
-        this.userDetailsService = userDetailsService;
-        this.jwtProvider = jwtProvider;
-    }
+    private final CustomUserDetailsService userDetailsService;
+    private final JwtProvider jwtProvider;
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain) throws ServletException, IOException {

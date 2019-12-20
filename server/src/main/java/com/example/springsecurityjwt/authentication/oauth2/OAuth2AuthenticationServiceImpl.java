@@ -10,6 +10,7 @@ import com.example.springsecurityjwt.users.UserRepository;
 import com.example.springsecurityjwt.users.UserType;
 import com.example.springsecurityjwt.util.JsonUtils;
 import com.google.gson.JsonObject;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.*;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -25,18 +26,12 @@ import java.util.Map;
 
 @Service
 @Slf4j
+@RequiredArgsConstructor
 public class OAuth2AuthenticationServiceImpl implements OAuth2AuthenticationService {
 
     private final UserRepository userRepository;
     private final OAuth2AccountRepository oAuth2AccountRepository;
     private final RestTemplate restTemplate;
-
-
-    public OAuth2AuthenticationServiceImpl(UserRepository userRepository, OAuth2AccountRepository oAuth2AccountRepository, RestTemplate restTemplate) {
-        this.userRepository = userRepository;
-        this.oAuth2AccountRepository = oAuth2AccountRepository;
-        this.restTemplate = restTemplate;
-    }
 
     @Override
     public String getOAuth2AccessToken(OAuth2AccessTokenRequest oAuth2AccessTokenRequest) {

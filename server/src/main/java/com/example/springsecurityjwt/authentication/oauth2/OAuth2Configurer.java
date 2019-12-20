@@ -1,5 +1,6 @@
 package com.example.springsecurityjwt.authentication.oauth2;
 
+import lombok.RequiredArgsConstructor;
 import org.springframework.boot.autoconfigure.security.oauth2.client.OAuth2ClientProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -11,13 +12,10 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 @Configuration
+@RequiredArgsConstructor
 public class OAuth2Configurer {
 
     private final OAuth2ClientProperties oAuth2ClientProperties;
-
-    public OAuth2Configurer(OAuth2ClientProperties oAuth2ClientProperties) {
-        this.oAuth2ClientProperties = oAuth2ClientProperties;
-    }
 
     @Bean
     public ClientRegistrationRepository clientRegistrationRepository() {

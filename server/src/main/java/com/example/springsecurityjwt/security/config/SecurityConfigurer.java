@@ -2,6 +2,7 @@ package com.example.springsecurityjwt.security.config;
 
 import com.example.springsecurityjwt.jwt.filter.JwtAuthenticationFilter;
 import com.example.springsecurityjwt.security.CustomUserDetailsService;
+import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -18,19 +19,12 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 
 @Configuration
 @EnableWebSecurity
+@RequiredArgsConstructor
 public class SecurityConfigurer extends WebSecurityConfigurerAdapter {
-
 
     private final CustomUserDetailsService userDetailsService;
     private final CustomOAuth2UserService oAuth2UserService;
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
-
-    public SecurityConfigurer(CustomUserDetailsService userDetailsService, JwtAuthenticationFilter jwtAuthenticationFilter) {
-
-        this.userDetailsService = userDetailsService;
-        this.oAuth2UserService = oAuth2UserService;
-        this.jwtAuthenticationFilter = jwtAuthenticationFilter;
-    }
 
     /*
          AuthenticationManager 에서 authenticate 메소드를 실행할때
