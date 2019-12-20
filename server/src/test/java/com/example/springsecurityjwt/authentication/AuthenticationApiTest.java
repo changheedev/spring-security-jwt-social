@@ -1,9 +1,6 @@
 package com.example.springsecurityjwt.authentication;
 
-import com.example.springsecurityjwt.jwt.JwtProvider;
-import com.example.springsecurityjwt.oauth2.OAuth2AdditionalAttributesRequest;
-import com.example.springsecurityjwt.security.AuthorityType;
-import com.example.springsecurityjwt.security.CustomUserDetails;
+import com.example.springsecurityjwt.SpringMvcTestSupport;
 import com.example.springsecurityjwt.users.SignUpRequest;
 import com.example.springsecurityjwt.users.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -13,15 +10,14 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
-import org.springframework.security.oauth2.core.AuthorizationGrantType;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.net.URI;
-import java.util.Arrays;
-import java.util.UUID;
+import java.nio.charset.StandardCharsets;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.print;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrlPattern;
@@ -42,12 +38,16 @@ public class AuthenticationApiTest {
     private ObjectMapper objectMapper;
     @Autowired
     private UserRepository userRepository;
-    @Autowired
-    private AuthorizationCodeRepository authorizationCodeRepository;
-    @Autowired
-    private JwtProvider jwtProvider;
 
-    private final URI AUTHENTICATION_REDIRECT_URI = URI.create("http://localhost:3000/oauth/result");
+    private final String AUTHORIZATION_CODE_REG_EXP = "[0-9a-fA-F]{8}[0-9a-fA-F]{4}[0-9a-fA-F]{4}[0-9a-fA-F]{4}[0-9a-fA-F]{12}";
+
+    private final String BASE_REDIRECT_URI = "http://localhost:3000/oauth2/callback";
+    private final String GOOGLE_REDIRECT_URI = BASE_REDIRECT_URI + "/google";
+    private final String NAVER_REDIRECT_URI = BASE_REDIRECT_URI + "/naver";
+    private final String KAKAO_REDIRECT_URI = BASE_REDIRECT_URI + "/kakao";
+    private final String GOOGLE_AUTHORIZATION_URI = "https://accounts.google.com/o/oauth2/auth";
+    private final String NAVER_AUTHORIZATION_URI = "https://nid.naver.com/oauth2.0/authorize";
+    private final String KAKAO_AUTHORIZATION_URI = "https://kauth.kakao.com/oauth/authorize";
 
     @BeforeEach
     public void setup() {
@@ -60,33 +60,32 @@ public class AuthenticationApiTest {
 
         //given
         SignUpRequest signUpRequest = registerTestUser("test@email.com", "ChangHee", "password");
+        AuthenticationRequest authenticationRequest = AuthenticationRequest.builder()
+                .username(signUpRequest.getEmail())
+                .password(signUpRequest.getPassword())
+                .build();
 
         //when
-        String strRedirectedUri = requestAuthentication(signUpRequest.getEmail(), signUpRequest.getPassword(), AUTHENTICATION_REDIRECT_URI.toString());
+        MvcResult mvcResult = mockMvc.perform(post("/authorize")
+                .contentType(MediaType.APPLICATION_JSON_VALUE)
+                .content(JsonUtils.toJson(authenticationRequest)))
+                .andExpect(status().isOk())
+                .andDo(print()).andReturn();
 
         //then
-        URI uriRedirectedUri = URI.create(strRedirectedUri);
-        String query = uriRedirectedUri.getQuery();
-        String code = query.substring(query.indexOf("=") + 1);
-
-        assertEquals(uriRedirectedUri.getHost(), AUTHENTICATION_REDIRECT_URI.getHost());
-        assertEquals(uriRedirectedUri.getPort(), AUTHENTICATION_REDIRECT_URI.getPort());
-        assertEquals(uriRedirectedUri.getPath(), AUTHENTICATION_REDIRECT_URI.getPath());
-        log.debug(code);
-        assertTrue(code.matches(AUTHORIZATION_CODE_REG_EXP));
+        String result = mvcResult.getResponse().getContentAsString();
+        AccessTokenResponse tokenResponse = JsonUtils.fromJson(result, AccessTokenResponse.class);
+        assertNotNull(tokenResponse.getToken());
+        assertNotNull(tokenResponse.getRefreshToken());
     }
 
     @Test
-    @Transactional
-    public void 추가_정보_입력_후_Authorization_Code_리디렉션_테스트() throws Exception {
+    public void 구글로그인_요청_리디렉션_테스트() throws Exception {
 
         //given
-        OAuth2AdditionalAttributesRequest oAuth2AdditionalAttributesRequest = OAuth2AdditionalAttributesRequest.builder()
-                .id("1234567")
-                .registrationId("google")
-                .name("ChangHee")
-                .email("test@gmail.com")
-                .build();
+        String googleLogin = UriComponentsBuilder.fromUriString("/oauth2/authorize/google")
+                .queryParam("redirectUri", GOOGLE_REDIRECT_URI)
+                .build().encode(StandardCharsets.UTF_8).toUriString();
 
         //when
         MvcResult result = mockMvc.perform(post("/oauth2/attributes")
@@ -94,53 +93,53 @@ public class AuthenticationApiTest {
                 .contentType(MediaType.APPLICATION_JSON_VALUE)
                 .content(jsonUtils.toJson(oAuth2AdditionalAttributesRequest)))
                 .andExpect(status().isFound())
-                .andDo(print())
-                .andReturn();
-
-        String strRedirectedUri = result.getResponse().getRedirectedUrl();
+                .andDo(print()).andReturn();
 
         //then
-        URI uriRedirectedUri = URI.create(strRedirectedUri);
-        String query = uriRedirectedUri.getQuery();
-        String code = query.substring(query.indexOf("=") + 1);
-
-        log.debug(code);
-        assertTrue(code.matches(AUTHORIZATION_CODE_REG_EXP));
+        //소셜 서비스에서 제공하는 인증 페이지로 리디렉션 된다.
+        String redirectUri = mvcResult.getResponse().getRedirectedUrl();
+        assertTrue(redirectUri.contains(GOOGLE_AUTHORIZATION_URI));
+        assertTrue(redirectUri.contains(GOOGLE_REDIRECT_URI));
     }
 
     @Test
-    @Transactional
-    public void Access_Token_발급_테스트() throws Exception {
-        //given
-        SignUpRequest signUpRequest = registerTestUser("test@email.com", "ChangHee", "password");
-        String code = UUID.randomUUID().toString().replace("-", "");
+    public void 네이버로그인_요청_리디렉션_테스트() throws Exception {
 
-        AuthorizationCode authorizationCode = AuthorizationCode.builder().username(signUpRequest.getEmail()).code(code).build();
-        authorizationCodeRepository.save(authorizationCode);
+        //given
+        String naverLogin = UriComponentsBuilder.fromUriString("/oauth2/authorize/naver")
+                .queryParam("redirectUri", NAVER_REDIRECT_URI)
+                .build().encode(StandardCharsets.UTF_8).toUriString();
 
         //when
-        AccessTokenResponse accessTokenResponse = getAccessToken(signUpRequest.getEmail(), code, null, AuthorizationGrantType.AUTHORIZATION_CODE);
+        MvcResult mvcResult = mockMvc.perform(get(naverLogin))
+                .andExpect(status().isFound())
+                .andDo(print()).andReturn();
 
         //then
-        assertNotNull(accessTokenResponse.getToken());
-        assertNotNull(accessTokenResponse.getRefreshToken());
+        //소셜 서비스에서 제공하는 인증 페이지로 리디렉션 된다.
+        String redirectUri = mvcResult.getResponse().getRedirectedUrl();
+        assertTrue(redirectUri.contains(NAVER_AUTHORIZATION_URI));
+        assertTrue(redirectUri.contains(NAVER_REDIRECT_URI));
     }
 
     @Test
-    @Transactional
-    public void Token_Refresh_테스트() throws Exception {
+    public void 카카오로그인_요청_리디렉션_테스트() throws Exception {
+
         //given
-        SignUpRequest signUpRequest = registerTestUser("test@email.com", "ChangHee", "password");
-        CustomUserDetails userDetails = CustomUserDetails.builder().email(signUpRequest.getEmail()).name(signUpRequest.getName()).authorities(Arrays.asList(AuthorityType.ROLE_MEMBER)).build();
-        String refreshToken = jwtProvider.generateRefreshToken(userDetails);
+        String kakaoLogin = UriComponentsBuilder.fromUriString("/oauth2/authorize/kakao")
+                .queryParam("redirectUri", KAKAO_REDIRECT_URI)
+                .build().encode(StandardCharsets.UTF_8).toUriString();
 
         //when
-        AccessTokenResponse accessTokenResponse = getAccessToken(signUpRequest.getEmail(), null, refreshToken, AuthorizationGrantType.REFRESH_TOKEN);
+        MvcResult mvcResult = mockMvc.perform(get(kakaoLogin))
+                .andExpect(status().isFound())
+                .andDo(print()).andReturn();
 
         //then
-        assertNotNull(accessTokenResponse.getToken());
-        assertNotNull(accessTokenResponse.getRefreshToken());
-        assertNotEquals(refreshToken, accessTokenResponse.getRefreshToken());
+        //소셜 서비스에서 제공하는 인증 페이지로 리디렉션 된다.
+        String redirectUri = mvcResult.getResponse().getRedirectedUrl();
+        assertTrue(redirectUri.contains(KAKAO_AUTHORIZATION_URI));
+        assertTrue(redirectUri.contains(KAKAO_REDIRECT_URI));
     }
 
     private SignUpRequest registerTestUser(String email, String name, String password) throws Exception {
@@ -155,17 +154,6 @@ public class AuthenticationApiTest {
         return signUpRequest;
     }
 
-    private AccessTokenResponse getAccessToken(String username, String code, String refreshToken, AuthorizationGrantType grantType) throws Exception {
-        AuthorizationRequest authorizationRequest = null;
-        if (grantType.equals(AuthorizationGrantType.AUTHORIZATION_CODE)) {
-            authorizationRequest = AuthorizationRequest.builder().username(username).code(code).grantType(grantType).build();
-        } else if (grantType.equals(AuthorizationGrantType.REFRESH_TOKEN)) {
-            authorizationRequest = AuthorizationRequest.builder().username(username).refreshToken(refreshToken).grantType(grantType).build();
-        }
-        AccessTokenResponse accessTokenResponse = requestAuthorization(authorizationRequest);
-        return accessTokenResponse;
-    }
-
     private void requestSignUpApi(SignUpRequest signUpRequest) throws Exception {
         MvcResult mvcResult = mockMvc.perform(post("/users")
                 .contentType(MediaType.APPLICATION_JSON_VALUE)
@@ -173,37 +161,5 @@ public class AuthenticationApiTest {
                 .andExpect(status().isOk())
                 .andDo(print())
                 .andReturn();
-    }
-
-    private String requestAuthentication(String username, String password, String redirectUrl) throws Exception {
-
-        AuthenticationRequest authenticationRequest = AuthenticationRequest.builder()
-                .username(username)
-                .password(password)
-                .redirectUri(redirectUrl)
-                .build();
-
-        MvcResult mvcResult = mockMvc.perform(post("/authenticate")
-                .contentType(MediaType.APPLICATION_JSON_VALUE)
-                .content(jsonUtils.toJson(authenticationRequest)))
-                .andExpect(status().isFound()) //302 Redirect
-                .andExpect(redirectedUrlPattern(redirectUrl + "?code={[0-9a-fA-F]{8}[0-9a-fA-F]{4}[0-9a-fA-F]{4}[0-9a-fA-F]{4}[0-9a-fA-F]{12}}"))
-                .andDo(print()).andReturn();
-
-        return mvcResult.getResponse().getRedirectedUrl();
-    }
-
-    private AccessTokenResponse requestAuthorization(AuthorizationRequest authorizationRequest) throws Exception {
-
-        MvcResult mvcResult = mockMvc.perform(post("/oauth2/token")
-                .contentType(MediaType.APPLICATION_JSON_VALUE)
-                .content(jsonUtils.toJson(authorizationRequest)))
-                .andExpect(status().isOk())
-                .andDo(print()).andReturn();
-
-        String result = mvcResult.getResponse().getContentAsString();
-        AccessTokenResponse accessTokenResponse = jsonUtils.fromJson(result, AccessTokenResponse.class);
-
-        return accessTokenResponse;
     }
 }

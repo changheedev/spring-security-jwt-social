@@ -9,10 +9,12 @@ import lombok.Setter;
 public class OAuth2CallbackRequest {
     private String code;
     private String state;
+    private String redirectUri;
 
     @Builder
-    public OAuth2CallbackRequest(String code, String state) {
+    public OAuth2CallbackRequest(String code, String state, String redirectUri) {
         this.code = code;
         this.state = state;
+        this.redirectUri = redirectUri;
     }
 }
