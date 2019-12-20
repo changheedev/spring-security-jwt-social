@@ -6,10 +6,8 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.test.web.servlet.MockMvc;
 
 @AutoConfigureMockMvc
-public abstract class SpringMvcTestSupport extends SpringTestSupport{
+public abstract class SpringMvcTestSupport extends SpringTestSupport {
 
     @Autowired
     protected MockMvc mockMvc;
-    @Autowired
-    protected JsonUtils jsonUtils;
 }

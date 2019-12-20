@@ -3,9 +3,11 @@ package com.example.springsecurityjwt.authentication;
 import com.example.springsecurityjwt.authentication.oauth2.*;
 import com.example.springsecurityjwt.authentication.oauth2.userInfo.OAuth2UserInfo;
 import com.example.springsecurityjwt.jwt.JwtProvider;
+import com.example.springsecurityjwt.security.CustomUserDetails;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.oauth2.client.registration.ClientRegistration;
@@ -37,6 +39,21 @@ public class AuthenticationController {
     public ResponseEntity<?> authenticateUsernamePassword(@Valid @RequestBody AuthenticationRequest authenticationRequest) {
         UserDetails userDetails = authenticationService.authenticateUsernamePassword(authenticationRequest.getUsername(), authenticationRequest.getPassword());
         return ResponseEntity.ok(authenticationService.issueAccessToken(userDetails));
+    }
+
+    /* 토큰을 갱신 해주는 컨트롤러 */
+    @PostMapping("/authorize/refresh_token")
+    public ResponseEntity<?> refreshAccessToken(@RequestBody RefreshTokenRequest refreshTokenRequest) {
+        AccessTokenResponse accessTokenResponse = authenticationService.refreshAccessToken(refreshTokenRequest.getRefreshToken());
+        return ResponseEntity.ok(accessTokenResponse);
+    }
+
+    /* 유저의 refresh token 을 만료시키는 컨트롤러 (로그아웃) */
+    @DeleteMapping("/authorize/refresh_token")
+    public ResponseEntity<?> expiredRefreshToken(@AuthenticationPrincipal CustomUserDetails userDetails){
+
+        authenticationService.expiredRefreshToken(userDetails.getUsername());
+        return ResponseEntity.ok("success");
     }
 
     /* 사용자의 소셜 로그인 요청을 받아 각 소셜 서비스로 인증을 요청하는 컨트롤러 */

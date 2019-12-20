@@ -2,7 +2,8 @@ package com.example.springsecurityjwt.authentication;
 
 public interface AuthenticationService {
 
-    String generateAuthorizationCode(String username) throws Exception;
-    AccessTokenResponse exchangeAuthorizationCodeToAccessToken(String code, String username) throws Exception;
-    AccessTokenResponse refreshAuthenticationToken(String refreshToken, String username) throws Exception;
+    UserDetails authenticateUsernamePassword(String username, String password);
+    AccessTokenResponse issueAccessToken(UserDetails userDetails);
+    AccessTokenResponse refreshAccessToken(String refreshToken);
+    void expiredRefreshToken(String username);
 }

@@ -48,6 +48,8 @@ public class SecurityConfigurer extends WebSecurityConfigurerAdapter {
                 .antMatchers("/authorize", "/oauth2/**").permitAll()
                 .antMatchers(HttpMethod.POST, "/users").permitAll()
                 .antMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+                .antMatchers(HttpMethod.POST, "/authorize/refresh_token").anonymous()
+                .antMatchers(HttpMethod.DELETE, "/authorize/refresh_token").authenticated()
                 .anyRequest().authenticated();
 
         //로그인 인증을 진행하는 필터 이전에 jwtAuthenticationFilter 가 실행되도록 설정
