@@ -49,8 +49,8 @@ public class AuthenticationServiceImpl implements AuthenticationService {
                 .refreshToken(jwtProvider.generateRefreshToken((CustomUserDetails)userDetails))
                 .build();
 
-        //refresh token db 저장
-        refreshTokenRepository.save(RefreshToken.builder().username(userDetails.getUsername()).refreshToken(accessTokenResponse.getRefreshToken()).build());
+        //리프레쉬 토큰 새로 저장
+        storeRefreshToken(userDetails, accessTokenResponse.getRefreshToken());
 
         return accessTokenResponse;
     }
@@ -82,8 +82,8 @@ public class AuthenticationServiceImpl implements AuthenticationService {
                     .refreshToken(jwtProvider.generateRefreshToken(userDetails))
                     .build();
 
-            //refresh token db 저장
-            refreshTokenRepository.save(RefreshToken.builder().username(userDetails.getUsername()).refreshToken(accessTokenResponse.getRefreshToken()).build());
+            //리프레쉬 토큰 새로 저장
+            storeRefreshToken(userDetails, accessTokenResponse.getRefreshToken());
         }
         //기존 토큰 재사용
         else {
@@ -107,5 +107,13 @@ public class AuthenticationServiceImpl implements AuthenticationService {
             throw new AuthenticationFailedException("사용할 수 없는 Refresh Token 입니다.");
 
         refreshTokenRepository.delete(optRefreshToken.get());
+    }
+
+    //refresh token db 저장
+    private void storeRefreshToken(UserDetails userDetails, String refreshToken){
+        if(refreshTokenRepository.existsByUsername(userDetails.getUsername())){
+            refreshTokenRepository.deleteByUsername(userDetails.getUsername());
+        }
+        refreshTokenRepository.save(RefreshToken.builder().username(userDetails.getUsername()).refreshToken(refreshToken).build());
     }
 }
