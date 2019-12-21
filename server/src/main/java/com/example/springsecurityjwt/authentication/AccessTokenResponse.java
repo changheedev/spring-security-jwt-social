@@ -2,10 +2,17 @@ package com.example.springsecurityjwt.authentication;
 
 import lombok.Builder;
 import lombok.Getter;
+import lombok.Setter;
 
 @Getter
-@Builder
+@Setter
 public class AccessTokenResponse {
-    private final String token;
-    private final String refreshToken;
+    private String token;
+    private String refreshToken;
+
+    @Builder
+    public AccessTokenResponse(String token, String refreshToken) {
+        this.token = token;
+        this.refreshToken = refreshToken;
+    }
 }

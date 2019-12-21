@@ -7,7 +7,6 @@ import lombok.Setter;
 
 @Getter
 @Setter
-@Builder
 public class AuthenticationRequest {
     @NotNull
     private String username;
@@ -16,7 +15,8 @@ public class AuthenticationRequest {
     @NotNull
     private String redirectUri;
 
-    public AuthenticationRequest(String username, String password, String redirectUri) {
+    @Builder
+    public AuthenticationRequest(String username, String password) {
         this.username = username;
         this.password = password;
         this.redirectUri = redirectUri;
