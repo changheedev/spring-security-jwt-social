@@ -26,7 +26,7 @@ public class UserRepositoryTest {
 
     @Test
     @Transactional
-    public void insertUserTest(){
+    public void insertUserTest() {
         User user = User.builder()
                 .username("test@email.com")
                 .name("changhee")

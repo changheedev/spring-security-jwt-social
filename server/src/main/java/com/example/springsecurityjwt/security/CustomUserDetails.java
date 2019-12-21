@@ -1,9 +1,9 @@
 package com.example.springsecurityjwt.security;
 
-import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.Setter;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -13,9 +13,8 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 @Getter
-@Builder
+@Setter
 @NoArgsConstructor
-@AllArgsConstructor
 public class CustomUserDetails implements UserDetails {
 
     private Long id;
@@ -23,7 +22,17 @@ public class CustomUserDetails implements UserDetails {
     private String email;
     private String username;
     private String password;
-    private List<AuthorityType> authorities;
+    private Collection<? extends GrantedAuthority> authorities;
+
+    @Builder
+    public CustomUserDetails(Long id, String name, String email, String username, String password, Collection<? extends GrantedAuthority> authorities) {
+        this.id = id;
+        this.name = name;
+        this.email = email;
+        this.username = username;
+        this.password = password;
+        this.authorities = authorities;
+    }
 
     @Override
     public String getUsername() {
@@ -37,7 +46,7 @@ public class CustomUserDetails implements UserDetails {
 
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
-        return authorities.stream().map(authority -> new SimpleGrantedAuthority(authority.toString())).collect(Collectors.toList());
+        return authorities;
     }
 
     @Override
