@@ -15,4 +15,5 @@ public class JwtProperties {
     private SignatureAlgorithm signatureAlgorithm;
     private Long tokenExpired;
     private Long refreshTokenExpired;
+    private Long cookieExpired;
 }

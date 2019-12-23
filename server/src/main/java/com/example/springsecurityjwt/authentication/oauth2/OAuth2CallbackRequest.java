@@ -10,6 +10,7 @@ public class OAuth2CallbackRequest {
     private String code;
     private String state;
     private String redirectUri;
+    private String responseType;
 
     @Builder
     public OAuth2CallbackRequest(String code, String state, String redirectUri) {

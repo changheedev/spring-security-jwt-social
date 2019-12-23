@@ -1,14 +1,12 @@
 package com.example.springsecurityjwt.authentication;
 
 import com.example.springsecurityjwt.jwt.JwtProvider;
-import com.example.springsecurityjwt.security.CustomUserDetails;
-import com.example.springsecurityjwt.security.CustomUserDetailsService;
-import io.jsonwebtoken.JwtException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
@@ -23,7 +21,6 @@ import java.util.Optional;
 public class AuthenticationServiceImpl implements AuthenticationService {
 
     private final AuthenticationManager authenticationManager;
-    private final CustomUserDetailsService customUserDetailsService;
     private final RefreshTokenRepository refreshTokenRepository;
     private final JwtProvider jwtProvider;
 
@@ -31,9 +28,8 @@ public class AuthenticationServiceImpl implements AuthenticationService {
     public UserDetails authenticateUsernamePassword(String username, String password) {
 
         try {
-            authenticationManager.authenticate(new UsernamePasswordAuthenticationToken(username, password));
-            UserDetails userDetails = customUserDetailsService.loadUserByUsername(username);
-            return userDetails;
+            Authentication authentication = authenticationManager.authenticate(new UsernamePasswordAuthenticationToken(username, password));
+            return (UserDetails) authentication.getPrincipal();
         } catch (UsernameNotFoundException e) {
             throw new UsernameNotFoundException("이메일 또는 비밀번호가 틀렸습니다.");
         } catch (BadCredentialsException e) {
@@ -43,52 +39,47 @@ public class AuthenticationServiceImpl implements AuthenticationService {
 
     @Override
     @Transactional
-    public AccessTokenResponse issueAccessToken(UserDetails userDetails) {
+    public AccessTokenResponse issueToken(String username) {
         AccessTokenResponse accessTokenResponse = AccessTokenResponse.builder()
-                .token(jwtProvider.generateToken((CustomUserDetails)userDetails))
-                .refreshToken(jwtProvider.generateRefreshToken((CustomUserDetails)userDetails))
+                .token(jwtProvider.generateToken(username))
+                .refreshToken(jwtProvider.generateRefreshToken())
                 .build();
 
         //리프레쉬 토큰 새로 저장
-        storeRefreshToken(userDetails, accessTokenResponse.getRefreshToken());
+        storeRefreshToken(username, accessTokenResponse.getRefreshToken());
 
         return accessTokenResponse;
     }
 
     @Override
     @Transactional
-    public AccessTokenResponse refreshAuthenticationToken(String refreshToken, String username) {
+    public AccessTokenResponse refreshAccessToken(String oldToken, String refreshToken) {
 
-        String tokenUsername = jwtProvider.extractUsername(refreshToken);
-        //토큰에서 username 을 추출할 수 없는 경우
-        if (tokenUsername == null) throw new AuthenticationFailedException("사용할 수 없는 Refresh Token 입니다.");
+        String username = jwtProvider.extractUsername(oldToken);
+        RefreshToken refreshTokenObj = refreshTokenRepository.findByUsernameAndRefreshToken(username, refreshToken)
+                .orElseThrow(() -> new AuthenticationFailedException("사용할 수 없는 Refresh Token 입니다."));
 
-        Optional<RefreshToken> optRefreshToken = refreshTokenRepository.findByUsername(tokenUsername);
-
-        //refresh token 엔티티를 찾을 수 없거나 요청된 refresh token 과 다른 경우
-        if(!optRefreshToken.isPresent() || !optRefreshToken.get().getRefreshToken().equals(refreshToken))
-            throw new AuthenticationFailedException("사용할 수 없는 Refresh Token 입니다.");
-
-        CustomUserDetails userDetails = (CustomUserDetails) customUserDetailsService.loadUserByUsername(username);
-        if (!jwtProvider.validateToken(refreshToken, userDetails))
+        if (refreshTokenObj.isExpired())
             throw new AuthenticationFailedException("사용할 수 없는 Refresh Token 입니다.");
 
         AccessTokenResponse accessTokenResponse = null;
 
+        log.debug(refreshTokenObj.getExpiredAt().toString());
+
         //refresh 토큰이 만료 한달전이면 새로 발급
-        if(jwtProvider.extractExpiration(refreshToken).isBefore(LocalDateTime.now().plusMonths(1))) {
+        if(refreshTokenObj.getExpiredAt().isBefore(LocalDateTime.now().plusMonths(1))) {
             accessTokenResponse = AccessTokenResponse.builder()
-                    .token(jwtProvider.generateToken(userDetails))
-                    .refreshToken(jwtProvider.generateRefreshToken(userDetails))
+                    .token(jwtProvider.generateToken(username))
+                    .refreshToken(jwtProvider.generateRefreshToken())
                     .build();
 
             //리프레쉬 토큰 새로 저장
-            storeRefreshToken(userDetails, accessTokenResponse.getRefreshToken());
+            storeRefreshToken(username, accessTokenResponse.getRefreshToken());
         }
-        //기존 토큰 재사용
+        //기존 refresh 토큰 재사용
         else {
             accessTokenResponse = AccessTokenResponse.builder()
-                    .token(jwtProvider.generateToken(userDetails))
+                    .token(jwtProvider.generateToken(username))
                     .refreshToken(refreshToken)
                     .build();
         }
@@ -110,10 +101,14 @@ public class AuthenticationServiceImpl implements AuthenticationService {
     }
 
     //refresh token db 저장
-    private void storeRefreshToken(UserDetails userDetails, String refreshToken){
-        if(refreshTokenRepository.existsByUsername(userDetails.getUsername())){
-            refreshTokenRepository.deleteByUsername(userDetails.getUsername());
+    private void storeRefreshToken(String username, String refreshToken){
+        if(refreshTokenRepository.existsByUsername(username)){
+            refreshTokenRepository.deleteByUsername(username);
         }
-        refreshTokenRepository.save(RefreshToken.builder().username(userDetails.getUsername()).refreshToken(refreshToken).build());
+        refreshTokenRepository.save(RefreshToken.builder()
+                        .username(username)
+                        .refreshToken(refreshToken)
+                        .expiredAt(LocalDateTime.now().plusSeconds(jwtProvider.getProperties().getRefreshTokenExpired()))
+                        .build());
     }
 }

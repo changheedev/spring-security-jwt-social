@@ -12,13 +12,12 @@ public class AuthenticationRequest {
     private String username;
     @NotNull
     private String password;
-    @NotNull
-    private String redirectUri;
+    private String responseType;
 
     @Builder
-    public AuthenticationRequest(String username, String password) {
+    public AuthenticationRequest(String username, String password, String responseType) {
         this.username = username;
         this.password = password;
-        this.redirectUri = redirectUri;
+        this.responseType = (responseType == null) ? "response_body" : responseType;
     }
 }
