@@ -49,10 +49,6 @@ public class User extends BaseEntity {
         this.type = type;
     }
 
-    public String getUsername(){
-        return email;
-    }
-
     public Collection<? extends GrantedAuthority> getAuthorities() {
         return this.authorities.stream().map(authority -> new SimpleGrantedAuthority(authority.toString())).collect(Collectors.toList());
     }
