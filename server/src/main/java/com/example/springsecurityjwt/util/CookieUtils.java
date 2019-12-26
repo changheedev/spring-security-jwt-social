@@ -1,6 +1,7 @@
 package com.example.springsecurityjwt.util;
 
 import org.springframework.util.SerializationUtils;
+
 import javax.servlet.http.Cookie;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
@@ -26,16 +27,15 @@ public class CookieUtils {
     public static void addCookie(HttpServletResponse response, String name, String value, int maxAge) {
         Cookie cookie = new Cookie(name, value);
         cookie.setPath("/");
-        cookie.setHttpOnly(true);
         cookie.setMaxAge(maxAge);
         response.addCookie(cookie);
     }
 
-    public static void addSecureCookie(HttpServletResponse response, String name, String value, int maxAge) {
+    public static void addCookie(HttpServletResponse response, String name, String value, boolean httpOnly, boolean secure, int maxAge) {
         Cookie cookie = new Cookie(name, value);
         cookie.setPath("/");
-        cookie.setHttpOnly(true);
-        cookie.setSecure(true);
+        cookie.setHttpOnly(httpOnly);
+        cookie.setSecure(secure);
         cookie.setMaxAge(maxAge);
         response.addCookie(cookie);
     }
@@ -43,7 +43,7 @@ public class CookieUtils {
     public static void deleteCookie(HttpServletRequest request, HttpServletResponse response, String name) {
         Cookie[] cookies = request.getCookies();
         if (cookies != null && cookies.length > 0) {
-            for (Cookie cookie: cookies) {
+            for (Cookie cookie : cookies) {
                 if (cookie.getName().equals(name)) {
                     cookie.setValue("");
                     cookie.setPath("/");
