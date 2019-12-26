@@ -1,6 +1,7 @@
 package com.example.springsecurityjwt.authentication;
 
 import com.example.springsecurityjwt.SpringTestSupport;
+import com.example.springsecurityjwt.jwt.JWT;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 
@@ -19,8 +20,8 @@ public class AuthenticationServiceTest extends SpringTestSupport {
     @Test
     public void refreshToken_만료시간_테스트() {
 
-        AccessTokenResponse accessTokenResponse = authenticationService.issueToken("abc@email.com");
-        RefreshToken entityRefreshToken = refreshTokenRepository.findByUsernameAndRefreshToken("abc@email.com", accessTokenResponse.getRefreshToken()).get();
+        JWT token = authenticationService.issueToken("abc@email.com");
+        RefreshToken entityRefreshToken = refreshTokenRepository.findByUsernameAndRefreshToken("abc@email.com", token.getRefreshToken()).get();
 
         assertFalse(entityRefreshToken.isExpired());
         assertTrue(entityRefreshToken.getExpiredAt().isAfter(LocalDateTime.now().plusDays(59)));

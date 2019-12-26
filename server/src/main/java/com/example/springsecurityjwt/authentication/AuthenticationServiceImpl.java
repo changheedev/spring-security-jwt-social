@@ -1,5 +1,6 @@
 package com.example.springsecurityjwt.authentication;
 
+import com.example.springsecurityjwt.jwt.JWT;
 import com.example.springsecurityjwt.jwt.JwtProvider;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -39,21 +40,20 @@ public class AuthenticationServiceImpl implements AuthenticationService {
 
     @Override
     @Transactional
-    public AccessTokenResponse issueToken(String username) {
-        AccessTokenResponse accessTokenResponse = AccessTokenResponse.builder()
+    public JWT issueToken(String username) {
+        JWT token = JWT.builder()
                 .token(jwtProvider.generateToken(username))
                 .refreshToken(jwtProvider.generateRefreshToken())
                 .build();
 
         //리프레쉬 토큰 새로 저장
-        storeRefreshToken(username, accessTokenResponse.getRefreshToken());
-
-        return accessTokenResponse;
+        storeRefreshToken(username, token.getRefreshToken());
+        return token;
     }
 
     @Override
     @Transactional
-    public AccessTokenResponse refreshAccessToken(String oldToken, String refreshToken) {
+    public JWT refreshAccessToken(String oldToken, String refreshToken) {
 
         String username = jwtProvider.extractUsername(oldToken);
         RefreshToken refreshTokenObj = refreshTokenRepository.findByUsernameAndRefreshToken(username, refreshToken)
@@ -62,29 +62,22 @@ public class AuthenticationServiceImpl implements AuthenticationService {
         if (refreshTokenObj.isExpired())
             throw new AuthenticationFailedException("사용할 수 없는 Refresh Token 입니다.");
 
-        AccessTokenResponse accessTokenResponse = null;
+        JWT token = JWT.builder()
+                .token(jwtProvider.generateToken(username)).build();
 
         log.debug(refreshTokenObj.getExpiredAt().toString());
 
         //refresh 토큰이 만료 한달전이면 새로 발급
-        if(refreshTokenObj.getExpiredAt().isBefore(LocalDateTime.now().plusMonths(1))) {
-            accessTokenResponse = AccessTokenResponse.builder()
-                    .token(jwtProvider.generateToken(username))
-                    .refreshToken(jwtProvider.generateRefreshToken())
-                    .build();
-
-            //리프레쉬 토큰 새로 저장
-            storeRefreshToken(username, accessTokenResponse.getRefreshToken());
+        if (refreshTokenObj.getExpiredAt().isBefore(LocalDateTime.now().plusMonths(1))) {
+            //리프레쉬 토큰 업데이트
+            String newRefreshToken = jwtProvider.generateRefreshToken();
+            storeRefreshToken(username, newRefreshToken);
+            token.setRefreshToken(newRefreshToken);
         }
         //기존 refresh 토큰 재사용
-        else {
-            accessTokenResponse = AccessTokenResponse.builder()
-                    .token(jwtProvider.generateToken(username))
-                    .refreshToken(refreshToken)
-                    .build();
-        }
+        else token.setRefreshToken(refreshToken);
 
-        return accessTokenResponse;
+        return token;
     }
 
     @Override
@@ -92,23 +85,20 @@ public class AuthenticationServiceImpl implements AuthenticationService {
     public void expiredRefreshToken(String username) {
 
         Optional<RefreshToken> optRefreshToken = refreshTokenRepository.findByUsername(username);
-
-        //refresh token 엔티티를 찾을 수 없는 경우
-        if(!optRefreshToken.isPresent())
-            throw new AuthenticationFailedException("사용할 수 없는 Refresh Token 입니다.");
-
+        //해당 username 으로 저장된 리프레쉬 토큰이 없는 경우 리턴
+        if (!optRefreshToken.isPresent()) return;
         refreshTokenRepository.delete(optRefreshToken.get());
     }
 
     //refresh token db 저장
-    private void storeRefreshToken(String username, String refreshToken){
-        if(refreshTokenRepository.existsByUsername(username)){
+    private void storeRefreshToken(String username, String refreshToken) {
+        if (refreshTokenRepository.existsByUsername(username)) {
             refreshTokenRepository.deleteByUsername(username);
         }
         refreshTokenRepository.save(RefreshToken.builder()
-                        .username(username)
-                        .refreshToken(refreshToken)
-                        .expiredAt(LocalDateTime.now().plusSeconds(jwtProvider.getProperties().getRefreshTokenExpired()))
-                        .build());
+                .username(username)
+                .refreshToken(refreshToken)
+                .expiredAt(LocalDateTime.now().plusSeconds(jwtProvider.getProperties().getRefreshTokenExpired()))
+                .build());
     }
 }

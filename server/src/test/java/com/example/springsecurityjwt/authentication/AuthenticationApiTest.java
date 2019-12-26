@@ -1,6 +1,7 @@
 package com.example.springsecurityjwt.authentication;
 
 import com.example.springsecurityjwt.SpringMvcTestSupport;
+import com.example.springsecurityjwt.jwt.JWT;
 import com.example.springsecurityjwt.users.SignUpRequest;
 import com.example.springsecurityjwt.users.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -65,7 +66,7 @@ public class AuthenticationApiTest {
 
         //given
         SignUpRequest signUpRequest = registerTestUser("test@email.com", "ChangHee", "password");
-        AuthenticationRequest authenticationRequest = AuthenticationRequest.builder()
+        AuthorizationRequest authorizationRequest = AuthorizationRequest.builder()
                 .username(signUpRequest.getEmail())
                 .password(signUpRequest.getPassword())
                 .build();
@@ -73,13 +74,13 @@ public class AuthenticationApiTest {
         //when
         MvcResult mvcResult = mockMvc.perform(post("/authorize")
                 .contentType(MediaType.APPLICATION_JSON_VALUE)
-                .content(JsonUtils.toJson(authenticationRequest)))
+                .content(JsonUtils.toJson(authorizationRequest)))
                 .andExpect(status().isOk())
                 .andDo(print()).andReturn();
 
         //then
         String result = mvcResult.getResponse().getContentAsString();
-        AccessTokenResponse tokenResponse = JsonUtils.fromJson(result, AccessTokenResponse.class);
+        JWT tokenResponse = JsonUtils.fromJson(result, JWT.class);
         assertNotNull(tokenResponse.getToken());
         assertNotNull(tokenResponse.getRefreshToken());
     }
@@ -90,7 +91,7 @@ public class AuthenticationApiTest {
 
         //given
         SignUpRequest signUpRequest = registerTestUser("test@email.com", "ChangHee", "password");
-        AuthenticationRequest authenticationRequest = AuthenticationRequest.builder()
+        AuthorizationRequest authorizationRequest = AuthorizationRequest.builder()
                 .username(signUpRequest.getEmail())
                 .password(signUpRequest.getPassword())
                 .responseType("cookie")
@@ -99,7 +100,7 @@ public class AuthenticationApiTest {
         //when
         MvcResult mvcResult = mockMvc.perform(post("/authorize")
                 .contentType(MediaType.APPLICATION_JSON_VALUE)
-                .content(JsonUtils.toJson(authenticationRequest)))
+                .content(JsonUtils.toJson(authorizationRequest)))
                 .andExpect(status().isOk())
                 .andDo(print()).andReturn();
 
@@ -115,7 +116,7 @@ public class AuthenticationApiTest {
 
         //given
         SignUpRequest signUpRequest = registerTestUser("test@email.com", "ChangHee", "password");
-        AccessTokenResponse oldToken = authenticationService.issueToken(signUpRequest.getEmail());
+        JWT oldToken = authenticationService.issueToken(signUpRequest.getEmail());
 
         //when
         Thread.sleep(1000);
@@ -127,7 +128,7 @@ public class AuthenticationApiTest {
 
         //then
         String result = mvcResult.getResponse().getContentAsString();
-        AccessTokenResponse newToken = JsonUtils.fromJson(result, AccessTokenResponse.class);
+        JWT newToken = JsonUtils.fromJson(result, JWT.class);
         assertNotEquals(oldToken.getToken(), newToken.getToken(), "토큰이 재발급 되지 않음.");
         assertEquals(oldToken.getRefreshToken(), newToken.getRefreshToken(), "만료기간이 한달 이상 남은 리프레쉬 토큰이 재발급 됨.");
     }
@@ -138,11 +139,11 @@ public class AuthenticationApiTest {
 
         //given
         SignUpRequest signUpRequest = registerTestUser("test@email.com", "ChangHee", "password");
-        AccessTokenResponse accessTokenResponse = authenticationService.issueToken(signUpRequest.getEmail());
+        JWT token = authenticationService.issueToken(signUpRequest.getEmail());
 
         //when
         MvcResult mvcResult = mockMvc.perform(post("/authorize/logout")
-                .header("Authorization", "Bearer " + accessTokenResponse.getToken()))
+                .header("Authorization", "Bearer " + token.getToken()))
                 .andExpect(status().isOk())
                 .andDo(print()).andReturn();
 
@@ -157,8 +158,8 @@ public class AuthenticationApiTest {
 
         //given
         SignUpRequest signUpRequest = registerTestUser("test@email.com", "ChangHee", "password");
-        AccessTokenResponse accessTokenResponse = authenticationService.issueToken(signUpRequest.getEmail());
-        Cookie cookie = new Cookie("access_token", accessTokenResponse.getToken());
+        JWT token = authenticationService.issueToken(signUpRequest.getEmail());
+        Cookie cookie = new Cookie("access_token", token.getToken());
         cookie.setMaxAge(60 * 60 * 24 * 7);
         cookie.setHttpOnly(true);
         cookie.setPath("/");

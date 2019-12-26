@@ -2,6 +2,7 @@ package com.example.springsecurityjwt.authentication;
 
 import com.example.springsecurityjwt.authentication.oauth2.*;
 import com.example.springsecurityjwt.authentication.oauth2.userInfo.OAuth2UserInfo;
+import com.example.springsecurityjwt.jwt.JWT;
 import com.example.springsecurityjwt.jwt.JwtProvider;
 import com.example.springsecurityjwt.util.CookieUtils;
 import lombok.RequiredArgsConstructor;
@@ -39,11 +40,11 @@ public class AuthenticationController {
 
     /* 사용자의 계정을 인증하고 로그인 토큰을 발급해주는 컨트롤러 */
     @PostMapping("/authorize")
-    public ResponseEntity<?> authenticateUsernamePassword(@Valid @RequestBody AuthenticationRequest authenticationRequest, HttpServletRequest request, HttpServletResponse response) {
+    public ResponseEntity<?> authenticateUsernamePassword(@Valid @RequestBody AuthorizationRequest authorizationRequest, HttpServletRequest request, HttpServletResponse response) {
 
         log.debug("login controller...");
-        UserDetails userDetails = authenticationService.authenticateUsernamePassword(authenticationRequest.getUsername(), authenticationRequest.getPassword());
-        return tokenResponseEntity(userDetails, authenticationRequest.getResponseType(), response);
+        UserDetails userDetails = authenticationService.authenticateUsernamePassword(authorizationRequest.getUsername(), authorizationRequest.getPassword());
+        return tokenResponseEntity(userDetails, authorizationRequest.getRedirectUri(), authorizationRequest.getResponseType(), response);
     }
 
     /* 토큰 쿠키를 삭제하고 refresh token 을 만료시키는 컨트롤러 (로그아웃) */
@@ -58,22 +59,19 @@ public class AuthenticationController {
     /**
      * 토큰을 갱신 해주는 컨트롤러
      * Cookie 토큰을 사용하는 경우 refresh token 을 지원하지 않는다.
-     * */
+     */
     @PostMapping("/authorize/refresh_token")
     public ResponseEntity<?> refreshAccessToken(@RequestBody RefreshTokenRequest refreshTokenRequest, HttpServletRequest request, HttpServletResponse response) {
-        AccessTokenResponse accessTokenResponse = authenticationService.refreshAccessToken(refreshTokenRequest.getToken(), refreshTokenRequest.getRefreshToken());
-        return ResponseEntity.ok(accessTokenResponse);
+        JWT token = authenticationService.refreshAccessToken(refreshTokenRequest.getToken(), refreshTokenRequest.getRefreshToken());
+        return ResponseEntity.ok(token);
     }
-
 
     /* 사용자의 소셜 로그인 요청을 받아 각 소셜 서비스로 인증을 요청하는 컨트롤러 */
     @GetMapping("/oauth2/authorize/{provider}")
     public void redirectSocialAuthorizationPage(@PathVariable String provider, @RequestParam String redirectUri, HttpServletRequest request, HttpServletResponse response) throws Exception {
 
-        if(!isAuthorizedRedirectUri(requestParams.getRedirectUri()))
-            throw new AuthenticationFailedException("허가되지 않은 리디렉션 URI 입니다.");
-
-        CookieUtils.addCookie(response, OAUTH2_AUTHORIZATION_COOKIE_NAME, URLEncoder.encode(JsonUtils.toJson(requestParams),"utf-8"), 180);
+        log.debug("redirect to = {}", redirectUri);
+        String state = UUID.randomUUID().toString().replace("-", "");
 
         ClientRegistration clientRegistration = clientRegistrationRepository.findByRegistrationId(provider);
 
@@ -91,7 +89,7 @@ public class AuthenticationController {
 
     /* 각 소셜 서비스로부터 인증 결과를 처리하는 컨트롤러 */
     @RequestMapping("/oauth2/callback/{provider}")
-    public ResponseEntity<?> oAuth2AuthenticationCallback(@PathVariable String provider, OAuth2CallbackRequest callbackRequest, HttpServletRequest request, HttpServletResponse response, @AuthenticationPrincipal UserDetails loginUser) {
+    public ResponseEntity<?> oAuth2AuthenticationCallback(@PathVariable String provider, @RequestBody OAuth2CallbackRequest callbackRequest, HttpServletRequest request, HttpServletResponse response, @AuthenticationPrincipal UserDetails loginUser) {
 
         ClientRegistration clientRegistration = clientRegistrationRepository.findByRegistrationId(provider);
 
@@ -101,28 +99,37 @@ public class AuthenticationController {
         //로그인 토큰이 있는 상태에서 인증하는 경우 (계정 연동) 콜백 처리
         if (loginUser != null) {
             oAuth2AuthenticationService.linkAccount(loginUser.getUsername(), provider, oAuth2UserInfo);
-            return ResponseEntity.ok("success");
+            AuthorizationResponse authorizationResponse = AuthorizationResponse.builder().redirectUri(callbackRequest.getRedirectUri()).authType("link").build();
+            return ResponseEntity.ok(authorizationResponse);
         }
         //로그인 인증 콜백처리
         else {
             UserDetails userDetails = oAuth2AuthenticationService.loadUser(clientRegistration.getRegistrationId(), oAuth2UserInfo);
-            return tokenResponseEntity(userDetails, callbackRequest.getResponseType(), response);
+            return tokenResponseEntity(userDetails, callbackRequest.getRedirectUri(), callbackRequest.getResponseType(), response);
         }
     }
 
-    private ResponseEntity<?> tokenResponseEntity(UserDetails userDetails, String responseType, HttpServletResponse response) {
+    private ResponseEntity<?> tokenResponseEntity(UserDetails userDetails, String redirectUri, String responseType, HttpServletResponse response) {
+
+        AuthorizationResponse authorizationResponse = AuthorizationResponse.builder().authType("auth").redirectUri(redirectUri).build();
+
         //응답 타입이 쿠키인 경우 리프레쉬 토큰은 발급하지 않는다.
         if (responseType.equals("cookie")) {
+            final int cookieMaxAge = jwtProvider.getProperties().getCookieExpired().intValue();
+
             //운영 환경인 경우 secure 옵션사용
             if (Arrays.stream(environment.getActiveProfiles()).anyMatch(profile -> profile.equalsIgnoreCase("prod")))
-                CookieUtils.addSecureCookie(response, "access_token", jwtProvider.generateCookieToken(userDetails.getUsername()), jwtProvider.getProperties().getCookieExpired().intValue());
+                CookieUtils.addCookie(response, "access_token", jwtProvider.generateCookieToken(userDetails.getUsername()), true, true, cookieMaxAge);
             else
-                CookieUtils.addCookie(response, "access_token", jwtProvider.generateCookieToken(userDetails.getUsername()), jwtProvider.getProperties().getCookieExpired().intValue());
-
-            return ResponseEntity.ok("success");
+                CookieUtils.addCookie(response, "access_token", jwtProvider.generateCookieToken(userDetails.getUsername()), true, false, cookieMaxAge);
+            //토큰 만료시간 쿠키 추가
+            CookieUtils.addCookie(response, "expires_in", String.valueOf(cookieMaxAge), cookieMaxAge);
         }
         //Response body 를 통해 토큰 발급
-        AccessTokenResponse accessTokenResponse = authenticationService.issueToken(userDetails.getUsername());
-        return ResponseEntity.ok(accessTokenResponse);
+        else {
+            JWT token = authenticationService.issueToken(userDetails.getUsername());
+            authorizationResponse.setToken(token);
+        }
+        return ResponseEntity.ok(authorizationResponse);
     }
 }

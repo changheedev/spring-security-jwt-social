@@ -1,24 +1,25 @@
 package com.example.springsecurityjwt.authentication;
 
-        import lombok.Builder;
-        import lombok.Getter;
-        import lombok.Setter;
-        import org.springframework.security.oauth2.core.AuthorizationGrantType;
+import com.sun.istack.NotNull;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.Setter;
 
 @Getter
 @Setter
 public class AuthorizationRequest {
-
-    private AuthorizationGrantType grantType;
+    @NotNull
     private String username;
-    private String code;
-    private String refreshToken;
+    @NotNull
+    private String password;
+    private String redirectUri;
+    private String responseType;
 
     @Builder
-    public AuthorizationRequest(AuthorizationGrantType grantType, String username, String code, String refreshToken) {
-        this.grantType = grantType;
+    public AuthorizationRequest(String username, String password, String redirectUri, String responseType) {
         this.username = username;
-        this.code = code;
-        this.refreshToken = refreshToken;
+        this.password = password;
+        this.redirectUri = (redirectUri == null) ? "/" : redirectUri;
+        this.responseType = (responseType == null) ? "response_body" : responseType;
     }
 }
