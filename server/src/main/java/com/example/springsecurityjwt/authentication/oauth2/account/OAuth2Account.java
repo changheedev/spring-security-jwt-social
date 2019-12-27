@@ -1,6 +1,7 @@
 package com.example.springsecurityjwt.authentication.oauth2.account;
 
 import com.example.springsecurityjwt.BaseEntity;
+import com.example.springsecurityjwt.users.User;
 import lombok.AccessLevel;
 import lombok.Builder;
 import lombok.Getter;
@@ -14,13 +15,15 @@ import javax.persistence.*;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class OAuth2Account extends BaseEntity {
 
-    private Long userId;
+    @OneToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "USER_ID")
+    private User user;
     private String providerId;
     private String provider;
 
     @Builder
-    public OAuth2Account(Long userId, String providerId, String provider) {
-        this.userId = userId;
+    public OAuth2Account(User user, String providerId, String provider) {
+        this.user = user;
         this.providerId = providerId;
         this.provider = provider;
     }
