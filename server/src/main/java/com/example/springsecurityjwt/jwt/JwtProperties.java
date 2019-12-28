@@ -14,6 +14,4 @@ public class JwtProperties {
     private String secretKey;
     private SignatureAlgorithm signatureAlgorithm;
     private Long tokenExpired;
-    private Long refreshTokenExpired;
-    private Long cookieExpired;
 }

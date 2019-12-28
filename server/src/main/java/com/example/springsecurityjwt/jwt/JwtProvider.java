@@ -3,7 +3,6 @@ package com.example.springsecurityjwt.jwt;
 
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
-import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Component;
 
 import java.time.LocalDateTime;
@@ -11,7 +10,6 @@ import java.time.ZoneId;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.UUID;
 import java.util.function.Function;
 
 @Component
@@ -21,10 +19,6 @@ public class JwtProvider {
 
     public JwtProvider(JwtProperties jwtProperties) {
         this.jwtProperties = jwtProperties;
-    }
-
-    public JwtProperties getProperties() {
-        return jwtProperties;
     }
 
     public String extractUsername(String token) {
@@ -53,11 +47,6 @@ public class JwtProvider {
         return generateToken(claims, username, jwtProperties.getTokenExpired());
     }
 
-    public String generateCookieToken(String username) {
-        Map<String, Object> claims = new HashMap<>();
-        return generateToken(claims, username, jwtProperties.getCookieExpired());
-    }
-
     private String generateToken(Map<String, Object> claims, String subject, Long expiryTime) {
         LocalDateTime expiryDate = LocalDateTime.now().plusSeconds(expiryTime);
         return Jwts.builder()
@@ -69,13 +58,13 @@ public class JwtProvider {
                 .compact();
     }
 
-    public String generateRefreshToken() {
-        return UUID.randomUUID().toString().replace("-", "");
-    }
-
     public boolean validateToken(String token, String username) {
         final String tokenUsername = extractUsername(token);
         return (username.equals(tokenUsername) && !isTokenExpired(token));
+    }
+
+    public Long getTokenExpirationDate() {
+        return jwtProperties.getTokenExpired();
     }
 
 }

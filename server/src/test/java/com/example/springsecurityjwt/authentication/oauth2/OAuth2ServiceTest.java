@@ -104,7 +104,7 @@ public class OAuth2ServiceTest extends SpringTestSupport {
 
     @Test
     @Transactional
-    public void 두번째_이후_소셜_로그인_테스트() {
+    public void 계정_생성_이후_소셜_로그인_테스트() {
 
         Map<String, Object> attributes = new HashMap<>();
 

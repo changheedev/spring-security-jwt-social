@@ -1,8 +1,7 @@
 package com.example.springsecurityjwt.users;
 
 import com.example.springsecurityjwt.SpringMvcTestSupport;
-import com.example.springsecurityjwt.authentication.AuthenticationService;
-import com.example.springsecurityjwt.jwt.JWT;
+import com.example.springsecurityjwt.jwt.JwtProvider;
 import com.example.springsecurityjwt.security.AuthorityType;
 import com.example.springsecurityjwt.util.JsonUtils;
 import org.junit.jupiter.api.BeforeEach;
@@ -34,7 +33,7 @@ public class UsersApiTest {
     @Autowired
     private UserRepository userRepository;
     @Autowired
-    private AuthenticationService authenticationService;
+    private JwtProvider jwtProvider;
 
     private final URI AUTHENTICATION_REDIRECT_URI = URI.create("http://localhost:3000/oauth/result");
 
@@ -65,8 +64,8 @@ public class UsersApiTest {
 
         //given
         SignUpRequest signUpRequest = registerTestUser("test@email.com", "ChangHee", "password");
-        JWT token = authenticationService.issueToken(signUpRequest.getEmail());
-        Cookie cookie = new Cookie("access_token", token.getToken());
+        String token = jwtProvider.generateToken(signUpRequest.getEmail());
+        Cookie cookie = new Cookie("access_token", token);
         cookie.setMaxAge(60 * 3);
         cookie.setHttpOnly(true);
         cookie.setPath("/");

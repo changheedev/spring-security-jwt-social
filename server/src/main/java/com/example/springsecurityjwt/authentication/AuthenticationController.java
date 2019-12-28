@@ -1,8 +1,10 @@
 package com.example.springsecurityjwt.authentication;
 
-import com.example.springsecurityjwt.authentication.oauth2.*;
+import com.example.springsecurityjwt.authentication.oauth2.OAuth2AccessTokenRequest;
+import com.example.springsecurityjwt.authentication.oauth2.OAuth2AuthenticationService;
+import com.example.springsecurityjwt.authentication.oauth2.OAuth2LinkAccountFailedException;
+import com.example.springsecurityjwt.authentication.oauth2.OAuth2UserInfoRequest;
 import com.example.springsecurityjwt.authentication.oauth2.userInfo.OAuth2UserInfo;
-import com.example.springsecurityjwt.jwt.JWT;
 import com.example.springsecurityjwt.jwt.JwtProvider;
 import com.example.springsecurityjwt.util.CookieUtils;
 import com.example.springsecurityjwt.util.JsonUtils;
@@ -27,7 +29,10 @@ import java.net.URI;
 import java.net.URLDecoder;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
-import java.util.*;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.UUID;
 
 @RestController
 @Slf4j
@@ -55,16 +60,6 @@ public class AuthenticationController {
 
         removeTokenCookie(request, response);
         return ResponseEntity.ok("success");
-    }
-
-    /**
-     * 토큰을 갱신 해주는 컨트롤러
-     * Cookie 토큰을 사용하는 경우 refresh token 을 지원하지 않는다.
-     */
-    @PostMapping("/authorize/refresh_token")
-    public ResponseEntity<?> refreshAccessToken(@RequestBody RefreshTokenRequest refreshTokenRequest, HttpServletRequest request, HttpServletResponse response) {
-        JWT token = authenticationService.refreshAccessToken(refreshTokenRequest.getToken(), refreshTokenRequest.getRefreshToken());
-        return ResponseEntity.ok(token);
     }
 
     /* 사용자의 소셜 로그인 요청을 받아 각 소셜 서비스로 인증을 요청하는 컨트롤러 */
@@ -122,13 +117,13 @@ public class AuthenticationController {
     }
 
     private void createTokenCookie(UserDetails userDetails, HttpServletResponse response) {
-        final int cookieMaxAge = jwtProvider.getProperties().getCookieExpired().intValue();
+        final int cookieMaxAge = jwtProvider.getTokenExpirationDate().intValue();
 
         //운영 환경인 경우 secure 옵션사용
         if (Arrays.stream(environment.getActiveProfiles()).anyMatch(profile -> profile.equalsIgnoreCase("prod")))
-            CookieUtils.addCookie(response, "access_token", jwtProvider.generateCookieToken(userDetails.getUsername()), true, true, cookieMaxAge);
+            CookieUtils.addCookie(response, "access_token", jwtProvider.generateToken(userDetails.getUsername()), true, true, cookieMaxAge);
         else
-            CookieUtils.addCookie(response, "access_token", jwtProvider.generateCookieToken(userDetails.getUsername()), true, false, cookieMaxAge);
+            CookieUtils.addCookie(response, "access_token", jwtProvider.generateToken(userDetails.getUsername()), true, false, cookieMaxAge);
 
         //토큰 만료시간 쿠키 추가
         CookieUtils.addCookie(response, "expires_in", String.valueOf(cookieMaxAge), cookieMaxAge);
