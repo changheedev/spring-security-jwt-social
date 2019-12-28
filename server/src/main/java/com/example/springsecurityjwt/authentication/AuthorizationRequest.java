@@ -12,14 +12,10 @@ public class AuthorizationRequest {
     private String username;
     @NotNull
     private String password;
-    private String redirectUri;
-    private String responseType;
 
     @Builder
-    public AuthorizationRequest(String username, String password, String redirectUri, String responseType) {
+    public AuthorizationRequest(String username, String password) {
         this.username = username;
         this.password = password;
-        this.redirectUri = (redirectUri == null) ? "/" : redirectUri;
-        this.responseType = (responseType == null) ? "response_body" : responseType;
     }
 }

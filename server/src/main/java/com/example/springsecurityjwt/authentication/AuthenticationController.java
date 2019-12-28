@@ -5,6 +5,7 @@ import com.example.springsecurityjwt.authentication.oauth2.userInfo.OAuth2UserIn
 import com.example.springsecurityjwt.jwt.JWT;
 import com.example.springsecurityjwt.jwt.JwtProvider;
 import com.example.springsecurityjwt.util.CookieUtils;
+import com.example.springsecurityjwt.util.JsonUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.env.Environment;
@@ -14,18 +15,19 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.oauth2.client.registration.ClientRegistration;
 import org.springframework.security.oauth2.client.registration.ClientRegistrationRepository;
-import org.springframework.security.oauth2.core.AuthorizationGrantType;
+import org.springframework.security.oauth2.core.endpoint.OAuth2AuthorizationResponse;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.util.UriComponents;
 import org.springframework.web.util.UriComponentsBuilder;
 
+import javax.servlet.http.Cookie;
+import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.net.URI;
 import java.net.URLDecoder;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
-import java.util.Arrays;
-import java.util.UUID;
+import java.util.*;
 
 @RestController
 @Slf4j
@@ -40,19 +42,18 @@ public class AuthenticationController {
 
     /* 사용자의 계정을 인증하고 로그인 토큰을 발급해주는 컨트롤러 */
     @PostMapping("/authorize")
-    public ResponseEntity<?> authenticateUsernamePassword(@Valid @RequestBody AuthorizationRequest authorizationRequest, HttpServletRequest request, HttpServletResponse response) {
+    public void authenticateUsernamePassword(@Valid @RequestBody AuthorizationRequest authorizationRequest, HttpServletRequest request, HttpServletResponse response) {
 
         log.debug("login controller...");
         UserDetails userDetails = authenticationService.authenticateUsernamePassword(authorizationRequest.getUsername(), authorizationRequest.getPassword());
-        return tokenResponseEntity(userDetails, authorizationRequest.getRedirectUri(), authorizationRequest.getResponseType(), response);
+        createTokenCookie(userDetails, response);
     }
 
-    /* 토큰 쿠키를 삭제하고 refresh token 을 만료시키는 컨트롤러 (로그아웃) */
+    /* 토큰 쿠키를 삭제하는 컨트롤러 (로그아웃) */
     @PostMapping("/authorize/logout")
     public ResponseEntity<?> expiredRefreshToken(@AuthenticationPrincipal UserDetails loginUser, HttpServletRequest request, HttpServletResponse response) {
 
-        CookieUtils.deleteCookie(request, response, "access_token");
-        authenticationService.expiredRefreshToken(loginUser.getUsername());
+        removeTokenCookie(request, response);
         return ResponseEntity.ok("success");
     }
 
@@ -68,9 +69,10 @@ public class AuthenticationController {
 
     /* 사용자의 소셜 로그인 요청을 받아 각 소셜 서비스로 인증을 요청하는 컨트롤러 */
     @GetMapping("/oauth2/authorize/{provider}")
-    public void redirectSocialAuthorizationPage(@PathVariable String provider, @RequestParam String redirectUri, HttpServletRequest request, HttpServletResponse response) throws Exception {
+    public void redirectSocialAuthorizationPage(@PathVariable String provider, @RequestParam(name = "redirect_uri") String redirectUri, HttpServletRequest request, HttpServletResponse response) throws Exception {
 
-        log.debug("redirect to = {}", redirectUri);
+        CookieUtils.addCookie(response, "redirect_uri", redirectUri, true, false, 180);
+
         String state = UUID.randomUUID().toString().replace("-", "");
 
         ClientRegistration clientRegistration = clientRegistrationRepository.findByRegistrationId(provider);
@@ -81,7 +83,7 @@ public class AuthenticationController {
                 .queryParam("include_granted_scopes", true)
                 .queryParam("scope", String.join("+", clientRegistration.getScopes()))
                 .queryParam("state", state)
-                .queryParam("redirect_uri", redirectUri)
+                .queryParam("redirect_uri", expandRedirectUri(request, clientRegistration))
                 .build().encode(StandardCharsets.UTF_8).toUriString();
 
         response.sendRedirect(authorizationUri);
@@ -89,47 +91,69 @@ public class AuthenticationController {
 
     /* 각 소셜 서비스로부터 인증 결과를 처리하는 컨트롤러 */
     @RequestMapping("/oauth2/callback/{provider}")
-    public ResponseEntity<?> oAuth2AuthenticationCallback(@PathVariable String provider, @RequestBody OAuth2CallbackRequest callbackRequest, HttpServletRequest request, HttpServletResponse response, @AuthenticationPrincipal UserDetails loginUser) {
+    public void oAuth2AuthenticationCallback(@PathVariable String provider, OAuth2AuthorizationResponse oAuth2AuthorizationResponse, HttpServletRequest request, HttpServletResponse response, @AuthenticationPrincipal UserDetails loginUser) throws Exception {
 
+        log.debug("callback....\n{}", JsonUtils.toJson(oAuth2AuthorizationResponse));
+        UriComponentsBuilder redirectUriBuilder = UriComponentsBuilder.fromUriString(CookieUtils.getCookie(request, "redirect_uri").map(Cookie::getValue).get());
         ClientRegistration clientRegistration = clientRegistrationRepository.findByRegistrationId(provider);
 
-        String accessToken = oAuth2AuthenticationService.getOAuth2AccessToken(OAuth2AccessTokenRequest.builder().clientRegistration(clientRegistration).code(callbackRequest.getCode()).state(callbackRequest.getState()).redirectUri(callbackRequest.getRedirectUri()).build());
+        String accessToken = oAuth2AuthenticationService.getOAuth2AccessToken(OAuth2AccessTokenRequest.builder().clientRegistration(clientRegistration).code(oAuth2AuthorizationResponse.getCode()).state(oAuth2AuthorizationResponse.getState()).redirectUri(expandRedirectUri(request, clientRegistration)).build());
         OAuth2UserInfo oAuth2UserInfo = oAuth2AuthenticationService.getOAuth2UserInfo(OAuth2UserInfoRequest.builder().clientRegistration(clientRegistration).accessToken(accessToken).build());
 
         //로그인 토큰이 있는 상태에서 인증하는 경우 (계정 연동) 콜백 처리
         if (loginUser != null) {
-            oAuth2AuthenticationService.linkAccount(loginUser.getUsername(), provider, oAuth2UserInfo);
-            AuthorizationResponse authorizationResponse = AuthorizationResponse.builder().redirectUri(callbackRequest.getRedirectUri()).authType("link").build();
-            return ResponseEntity.ok(authorizationResponse);
+            try {
+                oAuth2AuthenticationService.linkAccount(loginUser.getUsername(), provider, oAuth2UserInfo);
+            } catch (OAuth2LinkAccountFailedException e) {
+                redirectUriBuilder.queryParam("error", true);
+                redirectUriBuilder.queryParam("message", e.getMessage());
+            }
         }
         //로그인 인증 콜백처리
         else {
             UserDetails userDetails = oAuth2AuthenticationService.loadUser(clientRegistration.getRegistrationId(), oAuth2UserInfo);
-            return tokenResponseEntity(userDetails, callbackRequest.getRedirectUri(), callbackRequest.getResponseType(), response);
+            createTokenCookie(userDetails, response);
         }
+
+        redirectUriBuilder.encode().build();
+        log.debug("social authentication success, redirect to {}", redirectUriBuilder.toUriString());
+        CookieUtils.deleteCookie(request, response, "redirect_uri");
+        response.sendRedirect(redirectUriBuilder.toUriString());
     }
 
-    private ResponseEntity<?> tokenResponseEntity(UserDetails userDetails, String redirectUri, String responseType, HttpServletResponse response) {
+    private void createTokenCookie(UserDetails userDetails, HttpServletResponse response) {
+        final int cookieMaxAge = jwtProvider.getProperties().getCookieExpired().intValue();
 
-        AuthorizationResponse authorizationResponse = AuthorizationResponse.builder().authType("auth").redirectUri(redirectUri).build();
+        //운영 환경인 경우 secure 옵션사용
+        if (Arrays.stream(environment.getActiveProfiles()).anyMatch(profile -> profile.equalsIgnoreCase("prod")))
+            CookieUtils.addCookie(response, "access_token", jwtProvider.generateCookieToken(userDetails.getUsername()), true, true, cookieMaxAge);
+        else
+            CookieUtils.addCookie(response, "access_token", jwtProvider.generateCookieToken(userDetails.getUsername()), true, false, cookieMaxAge);
 
-        //응답 타입이 쿠키인 경우 리프레쉬 토큰은 발급하지 않는다.
-        if (responseType.equals("cookie")) {
-            final int cookieMaxAge = jwtProvider.getProperties().getCookieExpired().intValue();
+        //토큰 만료시간 쿠키 추가
+        CookieUtils.addCookie(response, "expires_in", String.valueOf(cookieMaxAge), cookieMaxAge);
+    }
 
-            //운영 환경인 경우 secure 옵션사용
-            if (Arrays.stream(environment.getActiveProfiles()).anyMatch(profile -> profile.equalsIgnoreCase("prod")))
-                CookieUtils.addCookie(response, "access_token", jwtProvider.generateCookieToken(userDetails.getUsername()), true, true, cookieMaxAge);
-            else
-                CookieUtils.addCookie(response, "access_token", jwtProvider.generateCookieToken(userDetails.getUsername()), true, false, cookieMaxAge);
-            //토큰 만료시간 쿠키 추가
-            CookieUtils.addCookie(response, "expires_in", String.valueOf(cookieMaxAge), cookieMaxAge);
-        }
-        //Response body 를 통해 토큰 발급
-        else {
-            JWT token = authenticationService.issueToken(userDetails.getUsername());
-            authorizationResponse.setToken(token);
-        }
-        return ResponseEntity.ok(authorizationResponse);
+    private void removeTokenCookie(HttpServletRequest request, HttpServletResponse response) {
+        CookieUtils.deleteCookie(request, response, "access_token");
+        CookieUtils.deleteCookie(request, response, "expires_in");
+    }
+
+    /* RedirectUriTemplate 을 이용해 RedirectUri 를 완성시켜주는 메소드 */
+    private String expandRedirectUri(HttpServletRequest request, ClientRegistration clientRegistration) {
+        Map<String, String> uriVariables = new HashMap<>();
+        uriVariables.put("registrationId", clientRegistration.getRegistrationId());
+
+        UriComponents uriComponents = UriComponentsBuilder.fromUriString(request.getRequestURL().toString())
+                .replacePath(request.getContextPath())
+                .replaceQuery(null)
+                .fragment(null)
+                .build();
+
+        uriVariables.put("baseUrl", uriComponents.toUriString());
+
+        return UriComponentsBuilder.fromUriString(clientRegistration.getRedirectUriTemplate())
+                .buildAndExpand(uriVariables)
+                .toUriString();
     }
 }

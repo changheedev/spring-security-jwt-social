@@ -62,31 +62,6 @@ public class AuthenticationApiTest {
 
     @Test
     @Transactional
-    public void AccessToken_발급_테스트() throws Exception {
-
-        //given
-        SignUpRequest signUpRequest = registerTestUser("test@email.com", "ChangHee", "password");
-        AuthorizationRequest authorizationRequest = AuthorizationRequest.builder()
-                .username(signUpRequest.getEmail())
-                .password(signUpRequest.getPassword())
-                .build();
-
-        //when
-        MvcResult mvcResult = mockMvc.perform(post("/authorize")
-                .contentType(MediaType.APPLICATION_JSON_VALUE)
-                .content(JsonUtils.toJson(authorizationRequest)))
-                .andExpect(status().isOk())
-                .andDo(print()).andReturn();
-
-        //then
-        String result = mvcResult.getResponse().getContentAsString();
-        JWT tokenResponse = JsonUtils.fromJson(result, JWT.class);
-        assertNotNull(tokenResponse.getToken());
-        assertNotNull(tokenResponse.getRefreshToken());
-    }
-
-    @Test
-    @Transactional
     public void Cookie_AccessToken_발급_테스트() throws Exception {
 
         //given
@@ -94,7 +69,6 @@ public class AuthenticationApiTest {
         AuthorizationRequest authorizationRequest = AuthorizationRequest.builder()
                 .username(signUpRequest.getEmail())
                 .password(signUpRequest.getPassword())
-                .responseType("cookie")
                 .build();
 
         //when
@@ -107,6 +81,7 @@ public class AuthenticationApiTest {
         //then
         Cookie cookie = mvcResult.getResponse().getCookie("access_token");
         assertNotNull(cookie);
+        assertTrue(cookie.getValue().startsWith("eyJhbGciOiJIUzI1NiJ9"));
         assertTrue(cookie.isHttpOnly());
     }
 
