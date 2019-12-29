@@ -46,13 +46,19 @@
 </template>
 
 <script>
-import {
-  DEFAULT_AUTH_URL,
-  GOOGLE_AUTH_URL,
-  NAVER_AUTH_URL,
-  KAKAO_AUTH_URL
-} from "~/constants";
+import { GOOGLE_AUTH_URL, NAVER_AUTH_URL, KAKAO_AUTH_URL } from "~/constants";
+
 export default {
+  asyncData({ query }) {
+    let redirectUri = "http://localhost:3000";
+
+    if (query.redirect_uri) redirectUri = redirectUri + query.redirect_uri;
+
+    return {
+      redirectUri: redirectUri
+    };
+  },
+  middleware: ["anonymous"],
   data() {
     return {
       social: [
@@ -81,14 +87,13 @@ export default {
   methods: {
     handleSubmit() {
       this.$axios
-        .$post("/api/authenticate", this.authenticationRequest)
+        .$post("/api/authorize", this.authenticationRequest)
         .then(response => {
-          let token = response.token;
-          console.log(token);
+          this.$router.push(this.redirectUri);
         });
     },
     handleSocialLogin(value) {
-      window.location = value.authUrl;
+      window.location = `${value.authUrl}?redirect_uri=${this.redirectUri}`;
     }
   }
 };
