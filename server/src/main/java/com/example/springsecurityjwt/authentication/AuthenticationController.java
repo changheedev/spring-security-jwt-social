@@ -6,6 +6,7 @@ import com.example.springsecurityjwt.authentication.oauth2.OAuth2LinkAccountFail
 import com.example.springsecurityjwt.authentication.oauth2.OAuth2UserInfoRequest;
 import com.example.springsecurityjwt.authentication.oauth2.userInfo.OAuth2UserInfo;
 import com.example.springsecurityjwt.jwt.JwtProvider;
+import com.example.springsecurityjwt.security.CustomUserDetails;
 import com.example.springsecurityjwt.util.CookieUtils;
 import com.example.springsecurityjwt.util.JsonUtils;
 import lombok.RequiredArgsConstructor;
@@ -25,8 +26,8 @@ import org.springframework.web.util.UriComponentsBuilder;
 import javax.servlet.http.Cookie;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
-import java.net.URI;
-import java.net.URLDecoder;
+import javax.validation.Valid;
+import java.io.IOException;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
@@ -47,7 +48,7 @@ public class AuthenticationController {
 
     /* 사용자의 계정을 인증하고 로그인 토큰을 발급해주는 컨트롤러 */
     @PostMapping("/authorize")
-    public void authenticateUsernamePassword(@Valid @RequestBody AuthorizationRequest authorizationRequest, HttpServletRequest request, HttpServletResponse response) {
+    public void authenticateUsernamePassword(@Valid @RequestBody AuthorizationRequest authorizationRequest, HttpServletRequest request, HttpServletResponse response) throws IOException {
 
         log.debug("login controller...");
         UserDetails userDetails = authenticationService.authenticateUsernamePassword(authorizationRequest.getUsername(), authorizationRequest.getPassword());
@@ -116,22 +117,23 @@ public class AuthenticationController {
         response.sendRedirect(redirectUriBuilder.toUriString());
     }
 
-    private void createTokenCookie(UserDetails userDetails, HttpServletResponse response) {
+    private void createTokenCookie(UserDetails userDetails, HttpServletResponse response) throws IOException {
         final int cookieMaxAge = jwtProvider.getTokenExpirationDate().intValue();
 
         //운영 환경인 경우 secure 옵션사용
-        if (Arrays.stream(environment.getActiveProfiles()).anyMatch(profile -> profile.equalsIgnoreCase("prod")))
+        if (Arrays.stream(environment.getActiveProfiles()).anyMatch(profile -> profile.equalsIgnoreCase("prod"))) {
             CookieUtils.addCookie(response, "access_token", jwtProvider.generateToken(userDetails.getUsername()), true, true, cookieMaxAge);
-        else
+            CookieUtils.addCookie(response, "logged_name", URLEncoder.encode(((CustomUserDetails) userDetails).getName(), "utf-8"), true, true, cookieMaxAge);
+        }
+        else{
             CookieUtils.addCookie(response, "access_token", jwtProvider.generateToken(userDetails.getUsername()), true, false, cookieMaxAge);
-
-        //토큰 만료시간 쿠키 추가
-        CookieUtils.addCookie(response, "expires_in", String.valueOf(cookieMaxAge), cookieMaxAge);
+            CookieUtils.addCookie(response, "logged_name", URLEncoder.encode(((CustomUserDetails) userDetails).getName(), "utf-8"), true, false, cookieMaxAge);
+        }
     }
 
     private void removeTokenCookie(HttpServletRequest request, HttpServletResponse response) {
         CookieUtils.deleteCookie(request, response, "access_token");
-        CookieUtils.deleteCookie(request, response, "expires_in");
+        CookieUtils.deleteCookie(request, response, "logged_name");
     }
 
     /* RedirectUriTemplate 을 이용해 RedirectUri 를 완성시켜주는 메소드 */
