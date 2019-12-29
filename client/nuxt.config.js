@@ -38,7 +38,13 @@ module.exports = {
     }
   },
 
-  modules: ["bootstrap-vue/nuxt", "@nuxtjs/axios"],
+  modules: [
+    "bootstrap-vue/nuxt",
+    "@nuxtjs/axios",
+    "cookie-universal-nuxt",
+    // With options
+    ["cookie-universal-nuxt", { alias: "cookiz" }]
+  ],
   axios: {
     proxy: true
   },
