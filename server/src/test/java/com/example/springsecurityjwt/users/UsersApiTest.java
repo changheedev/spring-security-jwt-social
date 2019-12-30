@@ -1,21 +1,28 @@
 package com.example.springsecurityjwt.users;
 
 import com.example.springsecurityjwt.SpringMvcTestSupport;
+import com.example.springsecurityjwt.authentication.oauth2.account.OAuth2Account;
+import com.example.springsecurityjwt.authentication.oauth2.account.OAuth2AccountRepository;
 import com.example.springsecurityjwt.jwt.JwtProvider;
 import com.example.springsecurityjwt.security.AuthorityType;
 import com.example.springsecurityjwt.util.JsonUtils;
+import com.google.gson.reflect.TypeToken;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.transaction.annotation.Transactional;
 
 import javax.servlet.http.Cookie;
 import java.net.URI;
+import java.util.Map;
 import java.util.Optional;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.hibernate.validator.internal.util.Contracts.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.print;
@@ -33,7 +40,11 @@ public class UsersApiTest {
     @Autowired
     private UserRepository userRepository;
     @Autowired
+    private OAuth2AccountRepository oAuth2AccountRepository;
+    @Autowired
     private JwtProvider jwtProvider;
+    @Autowired
+    private PasswordEncoder passwordEncoder;
 
     private final URI AUTHENTICATION_REDIRECT_URI = URI.create("http://localhost:3000/oauth/result");
 
@@ -84,6 +95,40 @@ public class UsersApiTest {
         assertEquals(userProfile.getName(), signUpRequest.getName());
         assertEquals(userProfile.getEmail(), signUpRequest.getEmail());
         assertEquals(userProfile.getAuthorities().get(0), AuthorityType.ROLE_MEMBER);
+    }
+
+    @Test
+    @Transactional
+    public void 로그인된_유저의_연동된_소셜계정_리스트_가져오기_테스트() throws Exception {
+
+        //given
+        User user = User.builder().email("test@email.com").name("Changhee").username("test@email.com").password(passwordEncoder.encode("password")).type(UserType.DEFAULT).build();
+        userRepository.save(user);
+
+        OAuth2Account googleAccount = OAuth2Account.builder().provider("google").providerId("123456789").user(user).build();
+        OAuth2Account kakaoAccount = OAuth2Account.builder().provider("kakao").providerId("123456789").user(user).build();
+        oAuth2AccountRepository.save(googleAccount);
+        oAuth2AccountRepository.save(kakaoAccount);
+
+        String token = jwtProvider.generateToken(user.getEmail());
+        Cookie cookie = new Cookie("access_token", token);
+        cookie.setMaxAge(60 * 3);
+        cookie.setHttpOnly(true);
+        cookie.setPath("/");
+
+        //when
+        MvcResult mvcResult = mockMvc.perform(get("/users/social")
+                .cookie(cookie))
+                .andExpect(status().isOk())
+                .andDo(print()).andReturn();
+
+        //then
+        String result = mvcResult.getResponse().getContentAsString();
+        Map<String, Object> accountMap = JsonUtils.fromJson(result, new TypeToken<Map<String, Object>>() {}.getType());
+
+        assertEquals(accountMap.size(), 2);
+        assertNotNull(accountMap.get("google"));
+        assertNotNull(accountMap.get("kakao"));
     }
 
     private SignUpRequest registerTestUser(String email, String name, String password) throws Exception {
