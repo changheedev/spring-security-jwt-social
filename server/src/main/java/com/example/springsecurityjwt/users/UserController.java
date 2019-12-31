@@ -44,4 +44,9 @@ public class UserController {
         Map<String, Object> linkedAccountMap = userService.getLinkedSocialAccountMap(loginUser.getUsername());
         return ResponseEntity.ok(linkedAccountMap);
     }
+
+    @PutMapping("")
+    public void updateProfile(@RequestBody UpdateProfileRequest updateProfileRequest, @AuthenticationPrincipal CustomUserDetails loginUser) {
+        userService.updateProfile(loginUser.getUsername(), updateProfileRequest);
+    }
 }

@@ -13,7 +13,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.Map;
 
 import static org.hibernate.validator.internal.util.Contracts.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.*;
 
 @ExtendWith(SpringExtension.class)
 @SpringBootTest
@@ -72,5 +72,53 @@ public class UserServiceTest {
         assertNotNull(accountMap.get("kakao"));
         log.debug(accountMap.get("google").toString());
         log.debug(accountMap.get("kakao").toString());
+    }
+
+    @Test
+    @Transactional
+    public void 중복된_이메일로_변경을_시도했을때_DuplicatedUsernameException_Throw_테스트() {
+
+        User user1 = User.builder().name("유저1").email("test@email.com").username("test@email.com").password(passwordEncoder.encode("password")).type(UserType.DEFAULT).build();
+        User user2 = User.builder().name("유저2").email("test2@email.com").username("test2@email.com").password(passwordEncoder.encode("password")).type(UserType.DEFAULT).build();
+        userRepository.save(user1);
+        userRepository.save(user2);
+
+        UpdateProfileRequest updateProfileRequest = UpdateProfileRequest.builder().name("유저2").email("test@email.com").build();
+
+        assertThrows(DuplicatedUsernameException.class, () -> {
+            userService.updateProfile(user2.getUsername(), updateProfileRequest);
+        });
+    }
+
+    @Test
+    @Transactional
+    public void 일반_계정의_이메일_변경_시_username이_함께_변경되는지_테스트() {
+
+        User user = User.builder().name("유저").email("test@email.com").username("test@email.com").password(passwordEncoder.encode("password")).type(UserType.DEFAULT).build();
+        userRepository.save(user);
+
+        UpdateProfileRequest updateProfileRequest = UpdateProfileRequest.builder().name("유저2").email("test2@email.com").build();
+
+        userService.updateProfile(user.getUsername(), updateProfileRequest);
+
+        assertEquals(user.getName(), updateProfileRequest.getName());
+        assertEquals(user.getEmail(), updateProfileRequest.getEmail());
+        assertEquals(user.getUsername(), updateProfileRequest.getEmail());
+    }
+
+    @Test
+    @Transactional
+    public void 소셜_계정의_이메일_변경_시_username이_변경되지_않는지_테스트() {
+
+        User user = User.builder().name("유저").email("test@email.com").username("test@email.com").password(passwordEncoder.encode("password")).type(UserType.OAUTH).build();
+        userRepository.save(user);
+
+        UpdateProfileRequest updateProfileRequest = UpdateProfileRequest.builder().name("유저2").email("test2@email.com").build();
+
+        userService.updateProfile(user.getUsername(), updateProfileRequest);
+
+        assertEquals(user.getName(), updateProfileRequest.getName());
+        assertEquals(user.getEmail(), updateProfileRequest.getEmail());
+        assertNotEquals(user.getUsername(), updateProfileRequest.getEmail());
     }
 }

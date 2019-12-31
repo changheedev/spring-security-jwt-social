@@ -23,8 +23,7 @@ import java.util.Optional;
 import static org.hibernate.validator.internal.util.Contracts.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.print;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -129,6 +128,29 @@ public class UsersApiTest {
         assertEquals(accountMap.size(), 2);
         assertNotNull(accountMap.get("google"));
         assertNotNull(accountMap.get("kakao"));
+    }
+
+    @Test
+    @Transactional
+    public void 프로필_변경_테스트() throws Exception {
+        User user = User.builder().email("test@email.com").name("Changhee").username("test@email.com").password(passwordEncoder.encode("password")).type(UserType.DEFAULT).build();
+        userRepository.save(user);
+
+        String token = jwtProvider.generateToken(user.getEmail());
+        Cookie cookie = new Cookie("access_token", token);
+        cookie.setMaxAge(60 * 3);
+        cookie.setHttpOnly(true);
+        cookie.setPath("/");
+
+        UpdateProfileRequest updateProfileRequest = UpdateProfileRequest.builder().name("Updated name").email("test2@email.com").build();
+        MvcResult mvcResult = mockMvc.perform(put("/users")
+                .cookie(cookie).contentType(MediaType.APPLICATION_JSON_VALUE).content(JsonUtils.toJson(updateProfileRequest)))
+                .andExpect(status().isOk())
+                .andDo(print()).andReturn();
+
+        assertEquals(user.getName(), updateProfileRequest.getName());
+        assertEquals(user.getEmail(), updateProfileRequest.getEmail());
+        assertEquals(user.getUsername(), updateProfileRequest.getEmail());
     }
 
     private SignUpRequest registerTestUser(String email, String name, String password) throws Exception {
