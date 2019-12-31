@@ -9,10 +9,11 @@
         right
         v-if="loggedName"
       >
-        <b-dropdown-item @click="logout()">Logout</b-dropdown-item>
+        <b-dropdown-item to="/mypage">마이페이지</b-dropdown-item>
+        <b-dropdown-item @click="logout()">로그아웃</b-dropdown-item>
       </b-nav-item-dropdown>
       <b-nav-item :to="`/login?redirect_uri=${$route.path}`" right v-else
-        >Sign in</b-nav-item
+        >로그인</b-nav-item
       >
     </b-navbar-nav>
   </b-navbar>
@@ -28,6 +29,7 @@ export default {
     logout() {
       this.$axios.post("/api/authorize/logout").then(() => {
         this.$store.commit("clearLoggedName");
+        this.$router.push("/login");
       });
     }
   }

@@ -20,6 +20,11 @@ module.exports = {
    */
   loading: { color: "#3B8070" },
   /*
+   ** Style CSS
+   */
+  css: ["~/assets/style.css"],
+
+  /*
    ** Build configuration
    */
   build: {

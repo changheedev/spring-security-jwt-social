@@ -1,0 +1,19 @@
+h1 {
+  font-size: 2rem;
+  margin-bottom: 2rem;
+}
+
+h2 {
+  font-size: 1.35rem;
+  margin-bottom: 1.35rem;
+}
+
+h3 {
+  font-size: 1rem;
+  margin-bottom: 1rem;
+}
+
+.row {
+  padding-top: 8px;
+  padding-bottom: 8px;
+}
