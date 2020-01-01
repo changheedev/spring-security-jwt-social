@@ -15,8 +15,6 @@ repositories {
 dependencies {
 	implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
 	implementation 'org.springframework.boot:spring-boot-starter-security'
-	implementation 'org.springframework.security:spring-security-oauth2-client:5.2.1.RELEASE'
-	implementation 'org.springframework.security:spring-security-oauth2-jose:5.2.1.RELEASE'
 	implementation 'org.springframework.boot:spring-boot-starter-web'
 	implementation 'org.mariadb.jdbc:mariadb-java-client:2.5.2'
 	implementation 'io.jsonwebtoken:jjwt:0.9.1'

@@ -1,12 +1,13 @@
 package com.example.springsecurityjwt.authentication.oauth2;
 
+import com.example.springsecurityjwt.authentication.oauth2.ClientRegistration;
+import com.example.springsecurityjwt.authentication.oauth2.ClientRegistrationRepository;
+import com.example.springsecurityjwt.authentication.oauth2.CustomOAuth2Provider;
+
+import com.example.springsecurityjwt.authentication.oauth2.OAuth2ClientProperties;
 import lombok.RequiredArgsConstructor;
-import org.springframework.boot.autoconfigure.security.oauth2.client.OAuth2ClientProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.security.oauth2.client.registration.ClientRegistration;
-import org.springframework.security.oauth2.client.registration.ClientRegistrationRepository;
-import org.springframework.security.oauth2.client.registration.InMemoryClientRegistrationRepository;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -25,42 +26,47 @@ public class OAuth2Configurer {
                 .filter(registration -> registration != null)
                 .collect(Collectors.toList());
 
-        return new InMemoryClientRegistrationRepository(registrations);
+        return new ClientRegistrationRepository(registrations);
     }
 
     private ClientRegistration getRegistration(String client) {
-
         if (client.equals("google")) {
             return CustomOAuth2Provider.GOOGLE.getBuilder(client)
                     .clientId(oAuth2ClientProperties.getRegistration().get(client).getClientId())
                     .clientSecret(oAuth2ClientProperties.getRegistration().get(client).getClientSecret())
-                    .scope(oAuth2ClientProperties.getRegistration().get(client).getScope())
-                    .redirectUriTemplate(oAuth2ClientProperties.getRegistration().get(client).getRedirectUri())
+                    .authorizationGrantType(oAuth2ClientProperties.getRegistration().get(client).getAuthorizationGrantType())
+                    .redirectUri(oAuth2ClientProperties.getRegistration().get(client).getRedirectUri())
+                    .scopes(oAuth2ClientProperties.getRegistration().get(client).getScope())
                     .authorizationUri(oAuth2ClientProperties.getProvider().get(client).getAuthorizationUri())
                     .tokenUri(oAuth2ClientProperties.getProvider().get(client).getTokenUri())
                     .userInfoUri(oAuth2ClientProperties.getProvider().get(client).getUserInfoUri())
+                    .unlinkUri(oAuth2ClientProperties.getProvider().get(client).getUnlinkUri())
                     .build();
         }
         if (client.equals("naver")) {
             return CustomOAuth2Provider.NAVER.getBuilder(client)
                     .clientId(oAuth2ClientProperties.getRegistration().get(client).getClientId())
                     .clientSecret(oAuth2ClientProperties.getRegistration().get(client).getClientSecret())
-                    .redirectUriTemplate(oAuth2ClientProperties.getRegistration().get(client).getRedirectUri())
-                    .scope(oAuth2ClientProperties.getRegistration().get(client).getScope())
+                    .authorizationGrantType(oAuth2ClientProperties.getRegistration().get(client).getAuthorizationGrantType())
+                    .redirectUri(oAuth2ClientProperties.getRegistration().get(client).getRedirectUri())
+                    .scopes(oAuth2ClientProperties.getRegistration().get(client).getScope())
                     .authorizationUri(oAuth2ClientProperties.getProvider().get(client).getAuthorizationUri())
                     .tokenUri(oAuth2ClientProperties.getProvider().get(client).getTokenUri())
                     .userInfoUri(oAuth2ClientProperties.getProvider().get(client).getUserInfoUri())
+                    .unlinkUri(oAuth2ClientProperties.getProvider().get(client).getUnlinkUri())
                     .build();
         }
         if (client.equals("kakao")) {
             return CustomOAuth2Provider.KAKAO.getBuilder(client)
                     .clientId(oAuth2ClientProperties.getRegistration().get(client).getClientId())
                     .clientSecret(oAuth2ClientProperties.getRegistration().get(client).getClientSecret())
-                    .redirectUriTemplate(oAuth2ClientProperties.getRegistration().get(client).getRedirectUri())
-                    .scope(oAuth2ClientProperties.getRegistration().get(client).getScope())
+                    .authorizationGrantType(oAuth2ClientProperties.getRegistration().get(client).getAuthorizationGrantType())
+                    .redirectUri(oAuth2ClientProperties.getRegistration().get(client).getRedirectUri())
+                    .scopes(oAuth2ClientProperties.getRegistration().get(client).getScope())
                     .authorizationUri(oAuth2ClientProperties.getProvider().get(client).getAuthorizationUri())
                     .tokenUri(oAuth2ClientProperties.getProvider().get(client).getTokenUri())
                     .userInfoUri(oAuth2ClientProperties.getProvider().get(client).getUserInfoUri())
+                    .unlinkUri(oAuth2ClientProperties.getProvider().get(client).getUnlinkUri())
                     .build();
         }
         return null;
