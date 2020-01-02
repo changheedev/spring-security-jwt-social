@@ -19,16 +19,16 @@
       <b-row v-for="item in social" :key="`social_${item.provider}`" no-gutters>
         <b-col cols="3" class="social-name" no-gutters>{{ item.name }}</b-col>
         <b-col cols="9" v-if="linkedSocialAccount[item.provider]" no-gutters>
-          <b-button size="sm" variant="outline-secondary">연동해제</b-button>
-          <span class="pl-2">{{
+          <b-button size="sm" variant="outline-secondary" @click="unlinkSocialAccount(item)">연동해제</b-button>
+          <span class="pl-2">
+            {{
             linkedSocialAccount[item.provider] + " 연동완료"
-          }}</span>
+            }}
+          </span>
         </b-col>
-        <b-col cols="9" v-else
-          ><b-button size="sm" @click="linkSocialAccount(item)" no-gutters
-            >연동하기</b-button
-          ></b-col
-        >
+        <b-col cols="9" v-else>
+          <b-button size="sm" @click="linkSocialAccount(item)" no-gutters>연동하기</b-button>
+        </b-col>
       </b-row>
     </div>
   </div>
@@ -39,12 +39,13 @@ import { GOOGLE_AUTH_URL, NAVER_AUTH_URL, KAKAO_AUTH_URL } from "~/constants";
 
 export default {
   middleware: ["authenticated"],
-  async asyncData({ app }) {
+  async asyncData({ app, route }) {
     const profileResponse = await app.$axios.get("/api/users/me");
     const socialAccountResponse = await app.$axios.get("/api/users/social");
     return {
       profile: profileResponse.data,
-      linkedSocialAccount: socialAccountResponse.data
+      linkedSocialAccount: socialAccountResponse.data,
+      redirectUri: process.env.baseUrl + route.path
     };
   },
   data() {
@@ -70,8 +71,10 @@ export default {
   },
   methods: {
     linkSocialAccount(value) {
-      const redirectUri = "http://localhost:3000/mypage";
-      window.location = `${value.authUrl}?redirect_uri=${redirectUri}`;
+      window.location = `${value.authUrl}?redirect_uri=${this.redirectUri}&callback=link`;
+    },
+    unlinkSocialAccount(value) {
+      window.location = `${value.authUrl}?redirect_uri=${this.redirectUri}&callback=unlink`;
     }
   }
 };

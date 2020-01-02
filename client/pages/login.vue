@@ -1,12 +1,12 @@
 <template>
   <div class="container-login">
     <H1 class="login-title">Spring Social</H1>
-    <div class="container-login-social">
+    <div class="container-social-button">
       <b-button
         v-for="item in social"
-        :key="'button-' + item.provider"
-        :id="'button-' + item.provider"
-        :style="{ background: `url(${item.image}) no-repeat` }"
+        :key="`button-${item.provider}`"
+        :id="`button-${item.provider}`"
+        :class="`button-${item.provider}`"
         @click.prevent="handleSocialLogin(item)"
       ></b-button>
     </div>
@@ -64,18 +64,15 @@ export default {
       social: [
         {
           provider: "google",
-          authUrl: GOOGLE_AUTH_URL,
-          image: "/social/google.png"
+          authUrl: GOOGLE_AUTH_URL
         },
         {
           provider: "naver",
-          authUrl: NAVER_AUTH_URL,
-          image: "/social/naver.png"
+          authUrl: NAVER_AUTH_URL
         },
         {
           provider: "kakao",
-          authUrl: KAKAO_AUTH_URL,
-          image: "/social/kakao.png"
+          authUrl: KAKAO_AUTH_URL
         }
       ],
       authenticationRequest: {
@@ -93,7 +90,7 @@ export default {
         });
     },
     handleSocialLogin(value) {
-      window.location = `${value.authUrl}?redirect_uri=${this.redirectUri}`;
+      window.location = `${value.authUrl}?redirect_uri=${this.redirectUri}&callback=login`;
     }
   }
 };
@@ -107,23 +104,30 @@ export default {
   border-radius: 0.25rem;
   box-shadow: 0 1px 11px rgba(0, 0, 0, 0.27);
   text-align: center;
-
-  h1 {
-    font-size: 2rem;
-    margin-bottom: 2rem;
-  }
 }
 
-.container-login-social {
+.container-social-button {
   button {
     display: block;
     width: 300px;
     height: 50px;
     border: none;
-    background-color: #fff;
   }
+
   button + button {
     margin-top: 8px;
+  }
+
+  .button-google {
+    background: url("/social/google.png") no-repeat;
+  }
+
+  .button-naver {
+    background: url("/social/naver.png") no-repeat;
+  }
+
+  .button-kakao {
+    background: url("/social/kakao.png") no-repeat;
   }
 }
 

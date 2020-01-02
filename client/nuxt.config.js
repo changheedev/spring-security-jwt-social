@@ -24,6 +24,10 @@ module.exports = {
    */
   css: ["~/assets/style.css"],
 
+  env: {
+    baseUrl: process.env.BASE_URL || "http://localhost:3000",
+    apiBaseUrl: process.env.API_BASE_URL || "http://localhost:8080"
+  },
   /*
    ** Build configuration
    */
@@ -51,9 +55,7 @@ module.exports = {
     ["cookie-universal-nuxt", { alias: "cookiz" }]
   ],
   axios: {
-    proxy: true
-  },
-  proxy: {
-    "/api/": "http://localhost:8080"
+    baseURL: process.env.API_BASE_URL || "http://localhost:8080",
+    credentials: true
   }
 };
