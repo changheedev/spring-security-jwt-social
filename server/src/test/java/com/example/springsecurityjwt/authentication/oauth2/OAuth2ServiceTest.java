@@ -31,6 +31,8 @@ public class OAuth2ServiceTest extends SpringTestSupport {
     private OAuth2AuthenticationService oAuth2AuthenticationService;
     @Autowired
     private PasswordEncoder passwordEncoder;
+    @Autowired
+    private ClientRegistrationRepository clientRegistrationRepository;
 
     @Test
     @Transactional

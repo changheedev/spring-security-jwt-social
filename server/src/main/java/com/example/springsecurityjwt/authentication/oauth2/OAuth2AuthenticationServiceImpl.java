@@ -2,27 +2,21 @@ package com.example.springsecurityjwt.authentication.oauth2;
 
 import com.example.springsecurityjwt.authentication.oauth2.account.OAuth2Account;
 import com.example.springsecurityjwt.authentication.oauth2.account.OAuth2AccountRepository;
+import com.example.springsecurityjwt.authentication.oauth2.service.OAuth2Service;
+import com.example.springsecurityjwt.authentication.oauth2.service.OAuth2ServiceFactory;
 import com.example.springsecurityjwt.authentication.oauth2.userInfo.OAuth2UserInfo;
-import com.example.springsecurityjwt.authentication.oauth2.userInfo.OAuth2UserInfoFactory;
 import com.example.springsecurityjwt.security.CustomUserDetails;
 import com.example.springsecurityjwt.users.User;
 import com.example.springsecurityjwt.users.UserRepository;
 import com.example.springsecurityjwt.users.UserType;
-import com.example.springsecurityjwt.util.JsonUtils;
-import com.google.gson.JsonObject;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.http.*;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
-import org.springframework.security.oauth2.client.registration.ClientRegistration;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.util.LinkedMultiValueMap;
-import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.RestTemplate;
 
-import java.util.Map;
 import java.util.Optional;
 
 @Service
@@ -35,61 +29,19 @@ public class OAuth2AuthenticationServiceImpl implements OAuth2AuthenticationServ
     private final RestTemplate restTemplate;
 
     @Override
-    public String getOAuth2AccessToken(OAuth2AccessTokenRequest oAuth2AccessTokenRequest) {
+    public String getOAuth2AccessToken(ClientRegistration clientRegistration, String code, String state) {
 
-        HttpHeaders headers = new HttpHeaders();
-        headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
-
-        ClientRegistration clientRegistration = oAuth2AccessTokenRequest.getClientRegistration();
-
-        MultiValueMap<String, String> params = new LinkedMultiValueMap<>();
-        params.add("client_id", clientRegistration.getClientId());
-        params.add("client_secret", clientRegistration.getClientSecret());
-        params.add("grant_type", "authorization_code");
-        params.add("code", oAuth2AccessTokenRequest.getCode());
-        params.add("state", oAuth2AccessTokenRequest.getState());
-        params.add("redirect_uri", oAuth2AccessTokenRequest.getRedirectUri());
-
-        HttpEntity<MultiValueMap<String, String>> httpEntity = new HttpEntity<>(params, headers);
-
-        ResponseEntity<String> entity = restTemplate.exchange(clientRegistration.getProviderDetails().getTokenUri(), HttpMethod.POST, httpEntity, String.class);
-
-        if (entity.getStatusCodeValue() != 200)
-            throw new OAuth2AuthenticationFailedException(String.format("Get access token failed.\nProvider: %d, Code: %d \nDetails : %s", clientRegistration.getRegistrationId(), entity.getStatusCodeValue(), entity.getBody()));
-
-        log.debug("Get access token result code (provider: {}) : {}", clientRegistration.getRegistrationId(), entity.getStatusCodeValue());
-        JsonObject jsonObj = JsonUtils.parse(entity.getBody()).getAsJsonObject();
-        String accessToken = jsonObj.get("access_token").getAsString();
+        OAuth2Service oAuth2Service = OAuth2ServiceFactory.getOAuth2Service(restTemplate, clientRegistration.getRegistrationId());
+        String accessToken = oAuth2Service.getAccessToken(clientRegistration, code, state);
         return accessToken;
     }
 
     @Override
-    public OAuth2UserInfo getOAuth2UserInfo(OAuth2UserInfoRequest oAuth2UserInfoRequest) {
+    public OAuth2UserInfo getOAuth2UserInfo(ClientRegistration clientRegistration, String accessToken) {
 
-        ClientRegistration clientRegistration = oAuth2UserInfoRequest.getClientRegistration();
-
-        HttpHeaders headers = new HttpHeaders();
-
-        headers.add("Authorization", "Bearer " + oAuth2UserInfoRequest.getAccessToken());
-        headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
-
-        HttpEntity<?> httpEntity = new HttpEntity<>(headers);
-
-        ResponseEntity<String> entity = restTemplate.exchange(clientRegistration.getProviderDetails().getUserInfoEndpoint().getUri(), HttpMethod.GET, httpEntity, String.class);
-
-        if (entity.getStatusCodeValue() != 200)
-            throw new OAuth2AuthenticationFailedException(String.format("Get access token failed.\nProvider: %d, Code: %d \nDetails : %s", clientRegistration.getRegistrationId(), entity.getStatusCodeValue(), entity.getBody()));
-
-        Map<String, Object> userAttributes = JsonUtils.fromJson(entity.getBody(), Map.class);
-
-        OAuth2UserInfo userInfo = OAuth2UserInfoFactory.getOAuth2UserInfo(clientRegistration.getRegistrationId(), userAttributes);
-
+        OAuth2Service oAuth2Service = OAuth2ServiceFactory.getOAuth2Service(restTemplate, clientRegistration.getRegistrationId());
+        OAuth2UserInfo userInfo = oAuth2Service.getUserInfo(clientRegistration, accessToken);
         return userInfo;
-    }
-
-    @Override
-    public boolean findOAuth2Account(String registrationId, String providerId) {
-        return oAuth2AccountRepository.existsByProviderAndProviderId(registrationId, providerId);
     }
 
     @Override
@@ -138,7 +90,7 @@ public class OAuth2AuthenticationServiceImpl implements OAuth2AuthenticationServ
     public UserDetails linkAccount(String targetUsername, String registrationId, OAuth2UserInfo userInfo) {
 
         if (oAuth2AccountRepository.existsByProviderAndProviderId(registrationId, userInfo.getId()))
-            throw new OAuth2LinkAccountFailedException("이미 연동된 계정입니다.");
+            throw new OAuth2ProcessException("이미 연동된 계정입니다.");
 
         User user = userRepository.findByUsername(targetUsername)
                 .orElseThrow(() -> new UsernameNotFoundException("찾을 수 없는 회원입니다."));
@@ -152,5 +104,13 @@ public class OAuth2AuthenticationServiceImpl implements OAuth2AuthenticationServ
         oAuth2AccountRepository.save(oAuth2Account);
 
         return CustomUserDetails.builder().id(user.getId()).username(user.getUsername()).name(user.getName()).email(user.getEmail()).authorities(user.getAuthorities()).build();
+    }
+
+    @Override
+    @Transactional
+    public void unlinkAccount(ClientRegistration clientRegistration, String accessToken, Long userId) {
+        OAuth2Service oAuth2Service = OAuth2ServiceFactory.getOAuth2Service(restTemplate, clientRegistration.getRegistrationId());
+        oAuth2Service.unlink(clientRegistration, accessToken);
+        oAuth2AccountRepository.deleteByProviderAndUserId(clientRegistration.getRegistrationId(), userId);
     }
 }
