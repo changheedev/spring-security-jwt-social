@@ -8,12 +8,14 @@ import lombok.Setter;
 public final class OAuth2AuthorizationResponse {
     private String state;
     private String code;
+    private String error;
 
     public OAuth2AuthorizationResponse() {
     }
 
-    public OAuth2AuthorizationResponse(String state, String code) {
+    public OAuth2AuthorizationResponse(String state, String code, String error) {
         this.state = state;
         this.code = code;
+        this.error = error;
     }
 }

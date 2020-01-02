@@ -63,7 +63,7 @@ public class AuthenticationController {
         String state = UUID.randomUUID().toString().replace("-", "");
 
         // 콜백에서 사용할 요청 정보를 저장
-        inMemoryOAuth2RequestRepository.saveOAuth2Request(state, new OAuth2AuthorizationRequest(redirectUri, callback));
+        inMemoryOAuth2RequestRepository.saveOAuth2Request(state, OAuth2AuthorizationRequest.builder().referer(request.getHeader("referer")).redirectUri(redirectUri).callback(callback).build());
 
         ClientRegistration clientRegistration = clientRegistrationRepository.findByRegistrationId(provider);
 
@@ -76,8 +76,6 @@ public class AuthenticationController {
                 .queryParam("redirect_uri", clientRegistration.getRedirectUri())
                 .build().encode(StandardCharsets.UTF_8).toUriString();
 
-        log.debug("authorization uri = {}", authorizationUri);
-
         response.sendRedirect(authorizationUri);
     }
 
@@ -87,6 +85,15 @@ public class AuthenticationController {
 
         //인증을 요청할 때 저장했던 request 정보를 가져온다.
         OAuth2AuthorizationRequest oAuth2AuthorizationRequest = inMemoryOAuth2RequestRepository.deleteOAuth2Request(oAuth2AuthorizationResponse.getState());
+
+        //유저가 로그인 페이지에서 로그인을 취소하거나 오류가 발생했을때 처리
+        if(oAuth2AuthorizationResponse.getError() != null) {
+            String redirectUri = UriComponentsBuilder.fromUriString(oAuth2AuthorizationRequest.getReferer())
+                    .queryParam("error", oAuth2AuthorizationResponse.getError()).encode().build().toUriString();
+            response.sendRedirect(redirectUri);
+            return;
+        }
+
         UriComponentsBuilder redirectUriBuilder = UriComponentsBuilder.fromUriString(oAuth2AuthorizationRequest.getRedirectUri());
 
         ClientRegistration clientRegistration = clientRegistrationRepository.findByRegistrationId(provider);
