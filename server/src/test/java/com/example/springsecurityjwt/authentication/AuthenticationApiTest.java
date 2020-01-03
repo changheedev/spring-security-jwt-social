@@ -1,6 +1,7 @@
 package com.example.springsecurityjwt.authentication;
 
 import com.example.springsecurityjwt.SpringMvcTestSupport;
+import com.example.springsecurityjwt.jwt.JwtProvider;
 import com.example.springsecurityjwt.users.SignUpRequest;
 import com.example.springsecurityjwt.users.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -16,8 +17,7 @@ import org.springframework.transaction.annotation.Transactional;
 import javax.servlet.http.Cookie;
 import java.nio.charset.StandardCharsets;
 
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.print;
@@ -39,6 +39,8 @@ public class AuthenticationApiTest {
     private ObjectMapper objectMapper;
     @Autowired
     private UserRepository userRepository;
+    @Autowired
+    private JwtProvider jwtProvider;
 
     private final String GOOGLE_AUTHORIZATION_URI = "https://accounts.google.com/o/oauth2/auth";
     private final String NAVER_AUTHORIZATION_URI = "https://nid.naver.com/oauth2.0/authorize";
@@ -76,11 +78,53 @@ public class AuthenticationApiTest {
     }
 
     @Test
+    public void 틀린_이메일_또는_비밀번호를_사용할때_로그인_실패_테스트() throws Exception {
+
+        AuthorizationRequest authorizationRequest = AuthorizationRequest.builder()
+                .username("not_registerd@email.com")
+                .password("password")
+                .build();
+
+        MvcResult mvcResult = mockMvc.perform(post("/authorize")
+                .contentType(MediaType.APPLICATION_JSON_VALUE)
+                .content(JsonUtils.toJson(authorizationRequest)))
+                .andExpect(status().isBadRequest())
+                .andDo(print()).andReturn();
+    }
+
+    @Test
+    public void 로그아웃_테스트() throws Exception {
+
+        SignUpRequest signUpRequest = registerTestUser("test@email.com", "ChangHee", "password");
+        String token = jwtProvider.generateToken(signUpRequest.getEmail());
+        Cookie cookie = new Cookie("access_token", token);
+        cookie.setMaxAge(60 * 3);
+        cookie.setHttpOnly(true);
+        cookie.setPath("/");
+
+        MvcResult mvcResult = mockMvc.perform(post("/authorize/logout")
+                .cookie(cookie))
+                .andExpect(status().isOk())
+                .andDo(print()).andReturn();
+
+        assertEquals(mvcResult.getResponse().getCookie("access_token").getValue(), "");
+    }
+
+    @Test
+    public void 인증_토큰이_없을때_로그아웃_요청_실패_테스트() throws Exception {
+
+        MvcResult mvcResult = mockMvc.perform(post("/authorize/logout"))
+                .andExpect(status().isUnauthorized())
+                .andDo(print()).andReturn();
+    }
+
+    @Test
     public void 구글로그인_요청_리디렉션_테스트() throws Exception {
 
         //given
         String googleLogin = UriComponentsBuilder.fromUriString("/oauth2/authorize/google")
                 .queryParam("redirect_uri", REDIRECT_URI)
+                .queryParam("callback", "login")
                 .build().encode(StandardCharsets.UTF_8).toUriString();
 
         //when
@@ -103,6 +147,7 @@ public class AuthenticationApiTest {
         //given
         String naverLogin = UriComponentsBuilder.fromUriString("/oauth2/authorize/naver")
                 .queryParam("redirect_uri", REDIRECT_URI)
+                .queryParam("callback", "login")
                 .build().encode(StandardCharsets.UTF_8).toUriString();
 
         //when
@@ -122,6 +167,7 @@ public class AuthenticationApiTest {
         //given
         String kakaoLogin = UriComponentsBuilder.fromUriString("/oauth2/authorize/kakao")
                 .queryParam("redirect_uri", REDIRECT_URI)
+                .queryParam("callback", "login")
                 .build().encode(StandardCharsets.UTF_8).toUriString();
 
         //when

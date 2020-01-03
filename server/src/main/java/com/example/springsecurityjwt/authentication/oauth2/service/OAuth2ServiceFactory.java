@@ -13,6 +13,6 @@ public class OAuth2ServiceFactory {
         if (registrationId.equalsIgnoreCase("kakao"))
             return new KakaoOAuth2Service(restTemplate);
         else
-            throw new OAuth2ProcessException(registrationId + " 로그인은 현재 지원하지 않습니다.");
+            throw new OAuth2ProcessException(registrationId + " login not supported");
     }
 }

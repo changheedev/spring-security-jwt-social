@@ -90,10 +90,10 @@ public class OAuth2AuthenticationServiceImpl implements OAuth2AuthenticationServ
     public UserDetails linkAccount(String targetUsername, String registrationId, OAuth2UserInfo userInfo) {
 
         if (oAuth2AccountRepository.existsByProviderAndProviderId(registrationId, userInfo.getId()))
-            throw new OAuth2ProcessException("이미 연동된 계정입니다.");
+            throw new OAuth2ProcessException("This account is already linked");
 
         User user = userRepository.findByUsername(targetUsername)
-                .orElseThrow(() -> new UsernameNotFoundException("찾을 수 없는 회원입니다."));
+                .orElseThrow(() -> new UsernameNotFoundException("Member not found"));
 
         OAuth2Account oAuth2Account = OAuth2Account.builder()
                 .provider(registrationId)

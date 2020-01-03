@@ -3,7 +3,6 @@ package com.example.springsecurityjwt.users;
 import com.example.springsecurityjwt.authentication.oauth2.account.OAuth2Account;
 import com.example.springsecurityjwt.authentication.oauth2.account.OAuth2AccountRepository;
 import lombok.RequiredArgsConstructor;
-import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -26,7 +25,7 @@ public class UserServiceImpl implements UserService {
     public void signUpService(SignUpRequest signUpRequest) {
 
         if (userRepository.findByUsername(signUpRequest.getEmail()).isPresent())
-            throw new DuplicatedUsernameException("이미 가입된 이메일입니다.");
+            throw new DuplicatedUsernameException("This is a registered member");
 
         User user = User.builder()
                 .username(signUpRequest.getEmail())
@@ -56,7 +55,7 @@ public class UserServiceImpl implements UserService {
     @Transactional
     public void updateProfile(String username, UpdateProfileRequest updateProfileRequest) {
 
-        User user = userRepository.findByUsername(username).orElseThrow(() -> new UsernameNotFoundException("등록되지 않은 회원입니다."));
+        User user = userRepository.findByUsername(username).get();
 
         //이름이 변경되었는지 체크
         if (!user.getName().equals(updateProfileRequest.getName()))
@@ -65,7 +64,7 @@ public class UserServiceImpl implements UserService {
         //이메일이 변경되었는지 체크
         if (!user.getEmail().equals(updateProfileRequest.getEmail())) {
             if (userRepository.existsByEmail(updateProfileRequest.getEmail()))
-                throw new DuplicatedUsernameException("사용할 수 없는 이메일 입니다.");
+                throw new DuplicatedUsernameException("This email is already in use");
             user.updateEmail(updateProfileRequest.getEmail());
         }
     }

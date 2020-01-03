@@ -14,7 +14,7 @@ public class OAuth2UserInfoFactory {
         } else if (registrationId.equalsIgnoreCase("naver")) {
             return new NaverOAuth2UserInfo(attributes);
         } else {
-            throw new OAuth2ProcessException(registrationId + " 로그인은 현재 지원하지 않습니다.");
+            throw new OAuth2ProcessException(registrationId + " login not supported");
         }
     }
 }

@@ -13,6 +13,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.env.Environment;
 import org.springframework.http.ResponseEntity;
+
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
@@ -109,7 +110,7 @@ public class AuthenticationController {
         else if (oAuth2AuthorizationRequest.getCallback().equalsIgnoreCase("link")) {
             //로그인 상태가 아니면
             if (loginUser == null)
-                throw new OAuth2ProcessException("loginUser cannot be null");
+                throw new UnauthorizedException("Access token is required to link social oauth");
 
             try {
                 OAuth2UserInfo oAuth2UserInfo = oAuth2AuthenticationService.getOAuth2UserInfo(clientRegistration, accessToken);
@@ -123,10 +124,10 @@ public class AuthenticationController {
         else if (oAuth2AuthorizationRequest.getCallback().equalsIgnoreCase("unlink")) {
             //로그인 상태가 아니면
             if (loginUser == null)
-                throw new OAuth2ProcessException("loginUser cannot be null");
+                throw new UnauthorizedException("Access token is required to unlink social oauth");
             oAuth2AuthenticationService.unlinkAccount(clientRegistration, accessToken, loginUser.getId());
         }
-        else throw new OAuth2ProcessException("this callback not supported");
+        else throw new OAuth2ProcessException("This callback not supported");
 
         redirectUriBuilder.encode().build();
         log.debug("social authentication success, redirect to {}", redirectUriBuilder.toUriString());
@@ -151,4 +152,9 @@ public class AuthenticationController {
         CookieUtils.deleteCookie(request, response, "logged_name");
     }
 
+
+    @GetMapping("/test")
+    public void testContoller() {
+
+    }
 }

@@ -3,11 +3,10 @@ package com.example.springsecurityjwt.authentication;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.authentication.AuthenticationManager;
-import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.core.userdetails.UserDetails;
-import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -23,10 +22,8 @@ public class AuthenticationServiceImpl implements AuthenticationService {
         try {
             Authentication authentication = authenticationManager.authenticate(new UsernamePasswordAuthenticationToken(username, password));
             return (UserDetails) authentication.getPrincipal();
-        } catch (UsernameNotFoundException e) {
-            throw new UsernameNotFoundException("이메일 또는 비밀번호가 틀렸습니다.");
-        } catch (BadCredentialsException e) {
-            throw new BadCredentialsException("이메일 또는 비밀번호가 틀렸습니다.");
+        } catch (AuthenticationException e) {
+            throw new AuthenticationProcessException("Username or password is wrong");
         }
     }
 }

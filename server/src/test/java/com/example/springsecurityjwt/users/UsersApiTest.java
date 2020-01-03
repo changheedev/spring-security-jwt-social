@@ -49,6 +49,7 @@ public class UsersApiTest {
 
     @BeforeEach
     public void setup() {
+        oAuth2AccountRepository.deleteAll();
         userRepository.deleteAll();
     }
 
@@ -98,6 +99,15 @@ public class UsersApiTest {
 
     @Test
     @Transactional
+    public void 인증_토큰이_없을때_프로필_요청실패_테스트() throws Exception {
+
+        MvcResult mvcResult = mockMvc.perform(get("/users/me"))
+                .andExpect(status().isUnauthorized())
+                .andDo(print()).andReturn();
+    }
+
+    @Test
+    @Transactional
     public void 로그인된_유저의_연동된_소셜계정_리스트_가져오기_테스트() throws Exception {
 
         //given
@@ -132,6 +142,15 @@ public class UsersApiTest {
 
     @Test
     @Transactional
+    public void 인증_토큰이_없을때_연동된_소셜계정_리스트_가져오기_요청실패_테스트() throws Exception {
+
+        MvcResult mvcResult = mockMvc.perform(get("/users/social"))
+                .andExpect(status().isUnauthorized())
+                .andDo(print()).andReturn();
+    }
+
+    @Test
+    @Transactional
     public void 프로필_변경_테스트() throws Exception {
         User user = User.builder().email("test@email.com").name("Changhee").username("test@email.com").password(passwordEncoder.encode("password")).type(UserType.DEFAULT).build();
         userRepository.save(user);
@@ -151,6 +170,19 @@ public class UsersApiTest {
         assertEquals(user.getName(), updateProfileRequest.getName());
         assertEquals(user.getEmail(), updateProfileRequest.getEmail());
         assertEquals(user.getUsername(), updateProfileRequest.getEmail());
+    }
+
+    @Test
+    @Transactional
+    public void 인증_토큰이_없을때_프로필_변경요청_실패_테스트() throws Exception {
+        User user = User.builder().email("test@email.com").name("Changhee").username("test@email.com").password(passwordEncoder.encode("password")).type(UserType.DEFAULT).build();
+        userRepository.save(user);
+
+        UpdateProfileRequest updateProfileRequest = UpdateProfileRequest.builder().name("Updated name").email("test2@email.com").build();
+        MvcResult mvcResult = mockMvc.perform(put("/users")
+                .contentType(MediaType.APPLICATION_JSON_VALUE).content(JsonUtils.toJson(updateProfileRequest)))
+                .andExpect(status().isUnauthorized())
+                .andDo(print()).andReturn();
     }
 
     private SignUpRequest registerTestUser(String email, String name, String password) throws Exception {
