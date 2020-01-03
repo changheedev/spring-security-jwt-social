@@ -1,4 +1,4 @@
-package com.example.springsecurityjwt;
+package com.example.springsecurityjwt.entity;
 
 import lombok.AccessLevel;
 import lombok.Getter;

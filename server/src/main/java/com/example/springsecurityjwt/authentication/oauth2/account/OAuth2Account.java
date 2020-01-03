@@ -1,6 +1,6 @@
 package com.example.springsecurityjwt.authentication.oauth2.account;
 
-import com.example.springsecurityjwt.BaseEntity;
+import com.example.springsecurityjwt.entity.BaseEntity;
 import com.example.springsecurityjwt.users.User;
 import lombok.AccessLevel;
 import lombok.Builder;

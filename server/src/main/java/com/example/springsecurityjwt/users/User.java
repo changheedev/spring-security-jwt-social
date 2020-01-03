@@ -1,6 +1,6 @@
 package com.example.springsecurityjwt.users;
 
-import com.example.springsecurityjwt.BaseEntity;
+import com.example.springsecurityjwt.entity.BaseEntity;
 import com.example.springsecurityjwt.security.AuthorityType;
 import lombok.AccessLevel;
 import lombok.Builder;
