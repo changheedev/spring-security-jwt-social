@@ -59,23 +59,27 @@ public class OAuth2AuthenticationServiceImpl implements OAuth2AuthenticationServ
         else {
             //이메일 정보가 있을때
             if (userInfo.getEmail() != null) {
-                // 중복된 이메일을 사용하는 계정이 존재하는지 확인 후 있다면 소셜 계정과 연결시키고 없다면 새로 생성하여 연결 시킨다.
+                // 같은 이메일을 사용하는 계정이 존재하는지 확인 후 있다면 소셜 계정과 연결시키고 없다면 새로 생성한다
                 user = userRepository.findByEmail(userInfo.getEmail())
-                        .orElse(userRepository.save(User.builder()
+                        .orElse(User.builder()
                                 .username(registrationId + "_" + userInfo.getId())
                                 .name(userInfo.getName())
                                 .email(userInfo.getEmail())
                                 .type(UserType.OAUTH)
-                                .build()));
+                                .build());
             }
             //이메일 정보가 없을때
             else {
-                user = userRepository.save(User.builder()
+                user = User.builder()
                         .username(registrationId + "_" + userInfo.getId())
                         .name(userInfo.getName())
                         .type(UserType.OAUTH)
-                        .build());
+                        .build();
             }
+
+            //새로 생성된 유저이면 db에 저장
+            if(user.getId() == null)
+                userRepository.save(user);
 
             OAuth2Account newAccount = OAuth2Account.builder().provider(registrationId).providerId(userInfo.getId()).user(user).build();
             oAuth2AccountRepository.save(newAccount);

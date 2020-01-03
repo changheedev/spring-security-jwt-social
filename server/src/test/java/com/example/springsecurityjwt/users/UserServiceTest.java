@@ -11,6 +11,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Map;
+import java.util.Optional;
 
 import static org.hibernate.validator.internal.util.Contracts.assertNotNull;
 import static org.junit.jupiter.api.Assertions.*;
@@ -21,8 +22,6 @@ public class UserServiceTest {
 
     @Autowired
     private UserService userService;
-    @Autowired
-    private CustomUserDetailsService userDetailsService;
     @Autowired
     private UserRepository userRepository;
     @Autowired
@@ -44,11 +43,12 @@ public class UserServiceTest {
         userService.signUpService(signUpRequest);
 
         //then
-        CustomUserDetails userDetails = (CustomUserDetails) userDetailsService.loadUserByUsername(signUpRequest.getEmail());
+        Optional<User> optUser = userRepository.findByUsername(signUpRequest.getEmail());
 
-        assertEquals(userDetails.getName(), signUpRequest.getName());
-        assertEquals(userDetails.getAuthorities().size(), 1);
-        assertEquals(passwordEncoder.matches(signUpRequest.getPassword(), userDetails.getPassword()), true);
+        assertTrue(optUser.isPresent());
+        assertEquals(optUser.get().getName(), signUpRequest.getName());
+        assertEquals(optUser.get().getAuthorities().size(), 1);
+        assertTrue(passwordEncoder.matches(signUpRequest.getPassword(), optUser.get().getPassword()));
     }
 
     @Test
