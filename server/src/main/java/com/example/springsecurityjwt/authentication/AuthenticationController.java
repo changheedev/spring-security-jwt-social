@@ -128,10 +128,21 @@ public class AuthenticationController {
                 redirectWithErrorMessage(oAuth2AuthorizationRequest.getReferer(), "unauthorized", response);
                 return;
             }
-            //연동해제 요청
-            oAuth2Service.unlink(clientRegistration, accessToken);
-            //연동된 계정 삭제
-            authenticationService.unlinkAccount(provider, oAuth2UserInfo, loginUser.getId());
+            //계정 생성에 사용된 소셜 계정이면 연동 해제 방지
+            if (loginUser.getUsername().equalsIgnoreCase(provider + "_" + oAuth2UserInfo.getId())) {
+                redirectWithErrorMessage(oAuth2AuthorizationRequest.getReferer(), "impossible_unlink", response);
+                return;
+            }
+
+            try {
+                //연동해제 요청
+                oAuth2Service.unlink(clientRegistration, accessToken);
+                //연동해제된 계정 삭제
+                authenticationService.unlinkAccount(provider, oAuth2UserInfo, loginUser.getId());
+            }catch (OAuth2ProcessException e) {
+                redirectWithErrorMessage(oAuth2AuthorizationRequest.getReferer(), "impossible_unlink", response);
+                return;
+            }
         } else {
             redirectWithErrorMessage(oAuth2AuthorizationRequest.getReferer(), "not_supported_callback", response);
             return;
@@ -161,7 +172,7 @@ public class AuthenticationController {
 
     private void redirectWithErrorMessage(String uri, String message, HttpServletResponse response) throws IOException {
         String redirectUri = UriComponentsBuilder.fromUriString(uri)
-                .queryParam("error", message).encode().build().toUriString();
+                .replaceQueryParam("error", message).encode().build().toUriString();
         response.sendRedirect(redirectUri);
     }
 }

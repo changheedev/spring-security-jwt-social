@@ -43,9 +43,9 @@ public class AuthenticationServiceImpl implements AuthenticationService {
 
     @Override
     @Transactional
-    public UserDetails loadUser(String registrationId, OAuth2UserInfo userInfo) {
+    public UserDetails loadUser(String provider, OAuth2UserInfo userInfo) {
 
-        Optional<OAuth2Account> oAuth2Account = oAuth2AccountRepository.findByProviderAndProviderId(registrationId, userInfo.getId());
+        Optional<OAuth2Account> oAuth2Account = oAuth2AccountRepository.findByProviderAndProviderId(provider, userInfo.getId());
         User user = null;
 
         //가입된 계정이 존재할때
@@ -59,7 +59,7 @@ public class AuthenticationServiceImpl implements AuthenticationService {
                 // 같은 이메일을 사용하는 계정이 존재하는지 확인 후 있다면 소셜 계정과 연결시키고 없다면 새로 생성한다
                 user = userRepository.findByEmail(userInfo.getEmail())
                         .orElse(User.builder()
-                                .username(registrationId + "_" + userInfo.getId())
+                                .username(provider + "_" + userInfo.getId())
                                 .name(userInfo.getName())
                                 .email(userInfo.getEmail())
                                 .type(UserType.OAUTH)
@@ -68,7 +68,7 @@ public class AuthenticationServiceImpl implements AuthenticationService {
             //이메일 정보가 없을때
             else {
                 user = User.builder()
-                        .username(registrationId + "_" + userInfo.getId())
+                        .username(provider + "_" + userInfo.getId())
                         .name(userInfo.getName())
                         .type(UserType.OAUTH)
                         .build();
@@ -78,7 +78,7 @@ public class AuthenticationServiceImpl implements AuthenticationService {
             if(user.getId() == null)
                 userRepository.save(user);
 
-            OAuth2Account newAccount = OAuth2Account.builder().provider(registrationId).providerId(userInfo.getId()).user(user).build();
+            OAuth2Account newAccount = OAuth2Account.builder().provider(provider).providerId(userInfo.getId()).user(user).build();
             oAuth2AccountRepository.save(newAccount);
         }
 
@@ -88,16 +88,16 @@ public class AuthenticationServiceImpl implements AuthenticationService {
 
     @Override
     @Transactional
-    public UserDetails linkAccount(String targetUsername, String registrationId, OAuth2UserInfo userInfo) {
+    public UserDetails linkAccount(String targetUsername, String provider, OAuth2UserInfo userInfo) {
 
-        if (oAuth2AccountRepository.existsByProviderAndProviderId(registrationId, userInfo.getId()))
+        if (oAuth2AccountRepository.existsByProviderAndProviderId(provider, userInfo.getId()))
             throw new OAuth2ProcessException("This account is already linked");
 
         User user = userRepository.findByUsername(targetUsername)
                 .orElseThrow(() -> new UsernameNotFoundException("Member not found"));
 
         OAuth2Account oAuth2Account = OAuth2Account.builder()
-                .provider(registrationId)
+                .provider(provider)
                 .providerId(userInfo.getId())
                 .user(user)
                 .build();
