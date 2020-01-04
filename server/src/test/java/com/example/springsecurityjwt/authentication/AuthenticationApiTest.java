@@ -4,7 +4,7 @@ import com.example.springsecurityjwt.SpringMvcTestSupport;
 import com.example.springsecurityjwt.jwt.JwtProvider;
 import com.example.springsecurityjwt.users.SignUpRequest;
 import com.example.springsecurityjwt.users.UserRepository;
-import org.junit.jupiter.api.BeforeEach;
+import com.example.springsecurityjwt.util.JsonUtils;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.slf4j.Logger;
@@ -46,11 +46,6 @@ public class AuthenticationApiTest {
     private final String NAVER_AUTHORIZATION_URI = "https://nid.naver.com/oauth2.0/authorize";
     private final String KAKAO_AUTHORIZATION_URI = "https://kauth.kakao.com/oauth/authorize";
     private final String REDIRECT_URI = "http://localhost:3000";
-
-    @BeforeEach
-    public void setup() {
-        userRepository.deleteAll();
-    }
 
     @Test
     @Transactional

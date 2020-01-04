@@ -7,7 +7,6 @@ import com.example.springsecurityjwt.jwt.JwtProvider;
 import com.example.springsecurityjwt.security.AuthorityType;
 import com.example.springsecurityjwt.util.JsonUtils;
 import com.google.gson.reflect.TypeToken;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
@@ -16,7 +15,6 @@ import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.transaction.annotation.Transactional;
 
 import javax.servlet.http.Cookie;
-import java.net.URI;
 import java.util.Map;
 import java.util.Optional;
 
@@ -44,14 +42,6 @@ public class UsersApiTest {
     private JwtProvider jwtProvider;
     @Autowired
     private PasswordEncoder passwordEncoder;
-
-    private final URI AUTHENTICATION_REDIRECT_URI = URI.create("http://localhost:3000/oauth/result");
-
-    @BeforeEach
-    public void setup() {
-        oAuth2AccountRepository.deleteAll();
-        userRepository.deleteAll();
-    }
 
     @Test
     @Transactional

@@ -1,9 +1,8 @@
 package com.example.springsecurityjwt.authentication;
 
-import com.example.springsecurityjwt.authentication.oauth2.OAuth2AccessTokenRequest;
-import com.example.springsecurityjwt.authentication.oauth2.OAuth2AuthenticationService;
-import com.example.springsecurityjwt.authentication.oauth2.OAuth2LinkAccountFailedException;
-import com.example.springsecurityjwt.authentication.oauth2.OAuth2UserInfoRequest;
+import com.example.springsecurityjwt.authentication.oauth2.*;
+import com.example.springsecurityjwt.authentication.oauth2.service.OAuth2Service;
+import com.example.springsecurityjwt.authentication.oauth2.service.OAuth2ServiceFactory;
 import com.example.springsecurityjwt.authentication.oauth2.userInfo.OAuth2UserInfo;
 import com.example.springsecurityjwt.jwt.JwtProvider;
 import com.example.springsecurityjwt.security.CustomUserDetails;
@@ -13,10 +12,11 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.env.Environment;
 import org.springframework.http.ResponseEntity;
-
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.client.RestTemplate;
+import org.springframework.web.util.UriComponents;
 import org.springframework.web.util.UriComponentsBuilder;
 
 import javax.servlet.http.HttpServletRequest;
@@ -34,9 +34,9 @@ import java.util.UUID;
 public class AuthenticationController {
 
     private final AuthenticationService authenticationService;
-    private final OAuth2AuthenticationService oAuth2AuthenticationService;
     private final ClientRegistrationRepository clientRegistrationRepository;
     private final InMemoryOAuth2RequestRepository inMemoryOAuth2RequestRepository;
+    private final RestTemplate restTemplate;
     private final JwtProvider jwtProvider;
     private final Environment environment;
 
@@ -89,46 +89,56 @@ public class AuthenticationController {
 
         //유저가 로그인 페이지에서 로그인을 취소하거나 오류가 발생했을때 처리
         if (oAuth2AuthorizationResponse.getError() != null) {
-            String redirectUri = UriComponentsBuilder.fromUriString(oAuth2AuthorizationRequest.getReferer())
-                    .queryParam("error", oAuth2AuthorizationResponse.getError()).encode().build().toUriString();
-            response.sendRedirect(redirectUri);
+            redirectWithErrorMessage(oAuth2AuthorizationRequest.getReferer(), oAuth2AuthorizationResponse.getError(), response);
             return;
         }
 
-        UriComponentsBuilder redirectUriBuilder = UriComponentsBuilder.fromUriString(oAuth2AuthorizationRequest.getRedirectUri());
-
+        //사용자의 요청에 맞는 OAuth2 클라이언트 정보를 매핑한다
         ClientRegistration clientRegistration = clientRegistrationRepository.findByRegistrationId(provider);
-        String accessToken = oAuth2AuthenticationService.getOAuth2AccessToken(clientRegistration, oAuth2AuthorizationResponse.getCode(), oAuth2AuthorizationResponse.getState());
-        OAuth2UserInfo oAuth2UserInfo = oAuth2AuthenticationService.getOAuth2UserInfo(clientRegistration, accessToken);
+        OAuth2Service oAuth2Service = OAuth2ServiceFactory.getOAuth2Service(restTemplate, clientRegistration.getRegistrationId());
+
+        //토큰과 유저 정보를 요청
+        String accessToken = oAuth2Service.getAccessToken(clientRegistration, oAuth2AuthorizationResponse.getCode(), oAuth2AuthorizationResponse.getState());
+        OAuth2UserInfo oAuth2UserInfo = oAuth2Service.getUserInfo(clientRegistration, accessToken);
+
         //로그인에 대한 콜백 처리
         if (oAuth2AuthorizationRequest.getCallback().equalsIgnoreCase("login")) {
-            UserDetails userDetails = oAuth2AuthenticationService.loadUser(provider, oAuth2UserInfo);
+            UserDetails userDetails = authenticationService.loadUser(provider, oAuth2UserInfo);
             createTokenCookie(userDetails, response);
         }
         //계정 연동에 대한 콜백 처리
         else if (oAuth2AuthorizationRequest.getCallback().equalsIgnoreCase("link")) {
             //로그인 상태가 아니면
-            if (loginUser == null)
-                throw new UnauthorizedException("Access token is required to link social oauth");
+            if (loginUser == null) {
+                redirectWithErrorMessage(oAuth2AuthorizationRequest.getReferer(), "unauthorized", response);
+                return;
+            }
 
             try {
-                oAuth2AuthenticationService.linkAccount(loginUser.getUsername(), provider, oAuth2UserInfo);
+                authenticationService.linkAccount(loginUser.getUsername(), provider, oAuth2UserInfo);
             } catch (OAuth2ProcessException e) {
-                redirectUriBuilder.queryParam("error", true);
-                redirectUriBuilder.queryParam("message", e.getMessage());
+                redirectWithErrorMessage(oAuth2AuthorizationRequest.getReferer(), "already_linked", response);
+                return;
             }
         }
         //계정 연동 해제에 대한 콜백 처리
         else if (oAuth2AuthorizationRequest.getCallback().equalsIgnoreCase("unlink")) {
             //로그인 상태가 아니면
-            if (loginUser == null)
-                throw new UnauthorizedException("Access token is required to unlink social oauth");
-            oAuth2AuthenticationService.unlinkAccount(clientRegistration, accessToken, oAuth2UserInfo, loginUser.getId());
-        } else throw new OAuth2ProcessException("This callback not supported");
+            if (loginUser == null) {
+                redirectWithErrorMessage(oAuth2AuthorizationRequest.getReferer(), "unauthorized", response);
+                return;
+            }
+            //연동해제 요청
+            oAuth2Service.unlink(clientRegistration, accessToken);
+            //연동된 계정 삭제
+            authenticationService.unlinkAccount(provider, oAuth2UserInfo, loginUser.getId());
+        } else {
+            redirectWithErrorMessage(oAuth2AuthorizationRequest.getReferer(), "not_supported_callback", response);
+            return;
+        }
 
-        redirectUriBuilder.encode().build();
-        log.debug("social authentication success, redirect to {}", redirectUriBuilder.toUriString());
-        response.sendRedirect(redirectUriBuilder.toUriString());
+        //콜백 성공
+        response.sendRedirect(oAuth2AuthorizationRequest.getRedirectUri());
     }
 
     private void createTokenCookie(UserDetails userDetails, HttpServletResponse response) throws IOException {
@@ -149,9 +159,9 @@ public class AuthenticationController {
         CookieUtils.deleteCookie(request, response, "logged_name");
     }
 
-
-    @GetMapping("/test")
-    public void testContoller() {
-
+    private void redirectWithErrorMessage(String uri, String message, HttpServletResponse response) throws IOException {
+        String redirectUri = UriComponentsBuilder.fromUriString(uri)
+                .queryParam("error", message).encode().build().toUriString();
+        response.sendRedirect(redirectUri);
     }
 }
