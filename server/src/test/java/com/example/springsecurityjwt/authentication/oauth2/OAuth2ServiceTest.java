@@ -117,8 +117,8 @@ public class OAuth2ServiceTest extends SpringTestSupport {
         OAuth2UserInfo oAuth2UserInfo = OAuth2UserInfoFactory.getOAuth2UserInfo("google", attributes);
 
         //when
-        CustomUserDetails userDetails1 = (CustomUserDetails)oAuth2AuthenticationService.loadUser("google", oAuth2UserInfo);
-        CustomUserDetails userDetails2 = (CustomUserDetails)oAuth2AuthenticationService.loadUser("google", oAuth2UserInfo);
+        CustomUserDetails userDetails1 = (CustomUserDetails) oAuth2AuthenticationService.loadUser("google", oAuth2UserInfo);
+        CustomUserDetails userDetails2 = (CustomUserDetails) oAuth2AuthenticationService.loadUser("google", oAuth2UserInfo);
 
         //then
         assertEquals(userDetails1.getId(), userDetails2.getId());
@@ -135,12 +135,41 @@ public class OAuth2ServiceTest extends SpringTestSupport {
         OAuth2UserInfo oAuth2UserInfo = OAuth2UserInfoFactory.getOAuth2UserInfo("google", attributes);
 
         //when
-        CustomUserDetails userDetails = (CustomUserDetails)oAuth2AuthenticationService.loadUser("google", oAuth2UserInfo);
+        CustomUserDetails userDetails = (CustomUserDetails) oAuth2AuthenticationService.loadUser("google", oAuth2UserInfo);
 
         //then
         assertNull(userDetails.getEmail());
         assertEquals(userDetails.getUsername(), "google_123456789");
         assertEquals(userDetails.getName(), "oauthUser");
+    }
+
+    public void 연동한_계정과_다른_계정으로_인증된_경우_연동해제_실패_테스트() throws Exception {
+
+        //given
+        User user = User.builder()
+                .username("test@email.com")
+                .email("test@email.com")
+                .name("ChangHee")
+                .password(passwordEncoder.encode("password"))
+                .type(UserType.DEFAULT)
+                .build();
+        userRepository.save(user);
+
+        OAuth2Account oAuth2Account = OAuth2Account.builder().provider("google").providerId("123456789").user(user).build();
+        oAuth2AccountRepository.save(oAuth2Account);
+
+        Map<String, Object> attributes = new HashMap<>();
+
+        attributes.put("id", "12345678910");
+        attributes.put("email", "test@email.com");
+        attributes.put("name", "oauthUser");
+
+        ClientRegistration clientRegistration = clientRegistrationRepository.findByRegistrationId("google");
+        OAuth2UserInfo oAuth2UserInfo = OAuth2UserInfoFactory.getOAuth2UserInfo("google", attributes);
+
+        assertThrows(OAuth2ProcessException.class, () -> {
+            oAuth2AuthenticationService.unlinkAccount(clientRegistration, "access-token", oAuth2UserInfo, user.getId());
+        });
     }
 }
 

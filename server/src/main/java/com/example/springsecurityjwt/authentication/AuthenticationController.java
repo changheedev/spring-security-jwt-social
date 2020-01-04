@@ -88,7 +88,7 @@ public class AuthenticationController {
         OAuth2AuthorizationRequest oAuth2AuthorizationRequest = inMemoryOAuth2RequestRepository.deleteOAuth2Request(oAuth2AuthorizationResponse.getState());
 
         //유저가 로그인 페이지에서 로그인을 취소하거나 오류가 발생했을때 처리
-        if(oAuth2AuthorizationResponse.getError() != null) {
+        if (oAuth2AuthorizationResponse.getError() != null) {
             String redirectUri = UriComponentsBuilder.fromUriString(oAuth2AuthorizationRequest.getReferer())
                     .queryParam("error", oAuth2AuthorizationResponse.getError()).encode().build().toUriString();
             response.sendRedirect(redirectUri);
@@ -99,10 +99,9 @@ public class AuthenticationController {
 
         ClientRegistration clientRegistration = clientRegistrationRepository.findByRegistrationId(provider);
         String accessToken = oAuth2AuthenticationService.getOAuth2AccessToken(clientRegistration, oAuth2AuthorizationResponse.getCode(), oAuth2AuthorizationResponse.getState());
-
+        OAuth2UserInfo oAuth2UserInfo = oAuth2AuthenticationService.getOAuth2UserInfo(clientRegistration, accessToken);
         //로그인에 대한 콜백 처리
         if (oAuth2AuthorizationRequest.getCallback().equalsIgnoreCase("login")) {
-            OAuth2UserInfo oAuth2UserInfo = oAuth2AuthenticationService.getOAuth2UserInfo(clientRegistration, accessToken);
             UserDetails userDetails = oAuth2AuthenticationService.loadUser(provider, oAuth2UserInfo);
             createTokenCookie(userDetails, response);
         }
@@ -113,7 +112,6 @@ public class AuthenticationController {
                 throw new UnauthorizedException("Access token is required to link social oauth");
 
             try {
-                OAuth2UserInfo oAuth2UserInfo = oAuth2AuthenticationService.getOAuth2UserInfo(clientRegistration, accessToken);
                 oAuth2AuthenticationService.linkAccount(loginUser.getUsername(), provider, oAuth2UserInfo);
             } catch (OAuth2ProcessException e) {
                 redirectUriBuilder.queryParam("error", true);
@@ -125,9 +123,8 @@ public class AuthenticationController {
             //로그인 상태가 아니면
             if (loginUser == null)
                 throw new UnauthorizedException("Access token is required to unlink social oauth");
-            oAuth2AuthenticationService.unlinkAccount(clientRegistration, accessToken, loginUser.getId());
-        }
-        else throw new OAuth2ProcessException("This callback not supported");
+            oAuth2AuthenticationService.unlinkAccount(clientRegistration, accessToken, oAuth2UserInfo, loginUser.getId());
+        } else throw new OAuth2ProcessException("This callback not supported");
 
         redirectUriBuilder.encode().build();
         log.debug("social authentication success, redirect to {}", redirectUriBuilder.toUriString());

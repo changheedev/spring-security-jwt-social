@@ -11,5 +11,6 @@ public interface OAuth2AccountRepository extends JpaRepository<OAuth2Account, Lo
     boolean existsByProviderAndProviderId(String provider, String providerId);
     Optional<OAuth2Account> findByProviderAndProviderId(String provider, String providerId);
     List<OAuth2Account> findAllByUser(User user);
-    void deleteByProviderAndUserId(String registrationId, Long userId);
+    boolean existsByProviderAndProviderIdAndUserId(String provider, String providerId, Long userId);
+    void deleteByProviderAndProviderIdAndUserId(String provider, String providerId, Long userId);
 }

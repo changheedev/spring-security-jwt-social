@@ -112,9 +112,14 @@ public class OAuth2AuthenticationServiceImpl implements OAuth2AuthenticationServ
 
     @Override
     @Transactional
-    public void unlinkAccount(ClientRegistration clientRegistration, String accessToken, Long userId) {
+    public void unlinkAccount(ClientRegistration clientRegistration, String accessToken, OAuth2UserInfo userInfo, Long userId) {
+
+        //연동해제 요청시 진행한 인증 과정에서 동일한 계정으로 인증되었는지 검사
+        if(!oAuth2AccountRepository.existsByProviderAndProviderIdAndUserId(clientRegistration.getRegistrationId(), userInfo.getId(), userId))
+            throw new OAuth2ProcessException("This account does not exist");
+
         OAuth2Service oAuth2Service = OAuth2ServiceFactory.getOAuth2Service(restTemplate, clientRegistration.getRegistrationId());
         oAuth2Service.unlink(clientRegistration, accessToken);
-        oAuth2AccountRepository.deleteByProviderAndUserId(clientRegistration.getRegistrationId(), userId);
+        oAuth2AccountRepository.deleteByProviderAndProviderIdAndUserId(clientRegistration.getRegistrationId(), userInfo.getId(), userId);
     }
 }

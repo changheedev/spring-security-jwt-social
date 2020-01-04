@@ -3,8 +3,6 @@ package com.example.springsecurityjwt.users;
 import com.example.springsecurityjwt.SpringTestSupport;
 import com.example.springsecurityjwt.authentication.oauth2.account.OAuth2Account;
 import com.example.springsecurityjwt.authentication.oauth2.account.OAuth2AccountRepository;
-import com.example.springsecurityjwt.security.CustomUserDetails;
-import com.example.springsecurityjwt.security.CustomUserDetailsService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.password.PasswordEncoder;
