@@ -6,7 +6,6 @@ import com.example.springsecurityjwt.authentication.oauth2.account.OAuth2Account
 import com.example.springsecurityjwt.jwt.JwtProvider;
 import com.example.springsecurityjwt.security.AuthorityType;
 import com.example.springsecurityjwt.util.JsonUtils;
-import com.google.gson.reflect.TypeToken;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
@@ -15,7 +14,7 @@ import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.transaction.annotation.Transactional;
 
 import javax.servlet.http.Cookie;
-import java.util.Map;
+import java.time.LocalDateTime;
 import java.util.Optional;
 
 import static org.hibernate.validator.internal.util.Contracts.assertNotNull;
@@ -64,8 +63,12 @@ public class UsersApiTest {
     public void 로그인_유저_프로필_가져오기_테스트() throws Exception {
 
         //given
-        SignUpRequest signUpRequest = registerTestUser("test@email.com", "ChangHee", "password");
-        String token = jwtProvider.generateToken(signUpRequest.getEmail());
+        User user = User.builder().name("Changhee").email("test@email.com").username("google_123456789").type(UserType.OAUTH).build();
+        userRepository.save(user);
+        OAuth2Account oAuth2Account = OAuth2Account.builder().provider("google").providerId("123456789").user(user).token("token").refreshToken("refresh_token").tokenExpiredAt(LocalDateTime.now().plusSeconds(3600)).build();
+        oAuth2AccountRepository.save(oAuth2Account);
+
+        String token = jwtProvider.generateToken(user.getUsername());
         Cookie cookie = new Cookie("access_token", token);
         cookie.setMaxAge(60 * 3);
         cookie.setHttpOnly(true);
@@ -82,9 +85,10 @@ public class UsersApiTest {
         UserProfileResponse userProfile = JsonUtils.fromJson(result, UserProfileResponse.class);
 
         assertNotNull(userProfile);
-        assertEquals(userProfile.getName(), signUpRequest.getName());
-        assertEquals(userProfile.getEmail(), signUpRequest.getEmail());
+        assertEquals(userProfile.getName(), user.getName());
+        assertEquals(userProfile.getEmail(), user.getEmail());
         assertEquals(userProfile.getAuthorities().get(0), AuthorityType.ROLE_MEMBER);
+        assertEquals(userProfile.getSocialProvider(), "google");
     }
 
     @Test
@@ -92,49 +96,6 @@ public class UsersApiTest {
     public void 인증_토큰이_없을때_프로필_요청실패_테스트() throws Exception {
 
         MvcResult mvcResult = mockMvc.perform(get("/users/me"))
-                .andExpect(status().isUnauthorized())
-                .andDo(print()).andReturn();
-    }
-
-    @Test
-    @Transactional
-    public void 로그인된_유저의_연동된_소셜계정_리스트_가져오기_테스트() throws Exception {
-
-        //given
-        User user = User.builder().email("test@email.com").name("Changhee").username("test@email.com").password(passwordEncoder.encode("password")).type(UserType.DEFAULT).build();
-        userRepository.save(user);
-
-        OAuth2Account googleAccount = OAuth2Account.builder().provider("google").providerId("123456789").user(user).build();
-        OAuth2Account kakaoAccount = OAuth2Account.builder().provider("kakao").providerId("123456789").user(user).build();
-        oAuth2AccountRepository.save(googleAccount);
-        oAuth2AccountRepository.save(kakaoAccount);
-
-        String token = jwtProvider.generateToken(user.getEmail());
-        Cookie cookie = new Cookie("access_token", token);
-        cookie.setMaxAge(60 * 3);
-        cookie.setHttpOnly(true);
-        cookie.setPath("/");
-
-        //when
-        MvcResult mvcResult = mockMvc.perform(get("/users/social")
-                .cookie(cookie))
-                .andExpect(status().isOk())
-                .andDo(print()).andReturn();
-
-        //then
-        String result = mvcResult.getResponse().getContentAsString();
-        Map<String, Object> accountMap = JsonUtils.fromJson(result, new TypeToken<Map<String, Object>>() {}.getType());
-
-        assertEquals(accountMap.size(), 2);
-        assertNotNull(accountMap.get("google"));
-        assertNotNull(accountMap.get("kakao"));
-    }
-
-    @Test
-    @Transactional
-    public void 인증_토큰이_없을때_연동된_소셜계정_리스트_가져오기_요청실패_테스트() throws Exception {
-
-        MvcResult mvcResult = mockMvc.perform(get("/users/social"))
                 .andExpect(status().isUnauthorized())
                 .andDo(print()).andReturn();
     }

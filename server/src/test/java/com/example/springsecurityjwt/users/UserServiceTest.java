@@ -51,29 +51,6 @@ public class UserServiceTest {
 
     @Test
     @Transactional
-    public void 연동된_소셜계정_리스트_불러오기_테스트() {
-        //given
-        User user = User.builder().email("test@email.com").name("Changhee").username("test@email.com").password(passwordEncoder.encode("password")).type(UserType.DEFAULT).build();
-        userRepository.save(user);
-
-        OAuth2Account googleAccount = OAuth2Account.builder().provider("google").providerId("123456789").user(user).build();
-        OAuth2Account kakaoAccount = OAuth2Account.builder().provider("kakao").providerId("123456789").user(user).build();
-        oAuth2AccountRepository.save(googleAccount);
-        oAuth2AccountRepository.save(kakaoAccount);
-
-        //when
-        Map<String, Object> accountMap = userService.getLinkedSocialAccountMap("test@email.com");
-
-        //then
-        assertEquals(accountMap.size(), 2);
-        assertNotNull(accountMap.get("google"));
-        assertNotNull(accountMap.get("kakao"));
-        log.debug(accountMap.get("google").toString());
-        log.debug(accountMap.get("kakao").toString());
-    }
-
-    @Test
-    @Transactional
     public void 중복된_이메일로_변경을_시도했을때_DuplicatedUsernameException_Throw_테스트() {
 
         User user1 = User.builder().name("유저1").email("test@email.com").username("test@email.com").password(passwordEncoder.encode("password")).type(UserType.DEFAULT).build();
