@@ -1,11 +1,13 @@
 package com.example.springsecurityjwt.authentication;
 
 import com.example.springsecurityjwt.authentication.oauth2.*;
+import com.example.springsecurityjwt.authentication.oauth2.account.OAuth2AccountDTO;
 import com.example.springsecurityjwt.authentication.oauth2.service.OAuth2Service;
 import com.example.springsecurityjwt.authentication.oauth2.service.OAuth2ServiceFactory;
 import com.example.springsecurityjwt.authentication.oauth2.userInfo.OAuth2UserInfo;
 import com.example.springsecurityjwt.jwt.JwtProvider;
 import com.example.springsecurityjwt.security.CustomUserDetails;
+import com.example.springsecurityjwt.users.UserType;
 import com.example.springsecurityjwt.util.CookieUtils;
 import com.example.springsecurityjwt.util.JsonUtils;
 import lombok.RequiredArgsConstructor;
@@ -16,17 +18,17 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.client.RestTemplate;
-import org.springframework.web.util.UriComponents;
 import org.springframework.web.util.UriComponentsBuilder;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import javax.validation.Valid;
 import java.io.IOException;
+import java.math.BigInteger;
 import java.net.URLEncoder;
-import java.nio.charset.StandardCharsets;
+import java.security.SecureRandom;
+import java.time.LocalDateTime;
 import java.util.Arrays;
-import java.util.UUID;
 
 @RestController
 @Slf4j
@@ -61,23 +63,14 @@ public class AuthenticationController {
     @GetMapping("/oauth2/authorize/{provider}")
     public void redirectSocialAuthorizationPage(@PathVariable String provider, @RequestParam(name = "redirect_uri") String redirectUri, @RequestParam String callback, HttpServletRequest request, HttpServletResponse response) throws Exception {
 
-        String state = UUID.randomUUID().toString().replace("-", "");
+        String state = generateState();
 
         // 콜백에서 사용할 요청 정보를 저장
         inMemoryOAuth2RequestRepository.saveOAuth2Request(state, OAuth2AuthorizationRequest.builder().referer(request.getHeader("referer")).redirectUri(redirectUri).callback(callback).build());
 
         ClientRegistration clientRegistration = clientRegistrationRepository.findByRegistrationId(provider);
-
-        String authorizationUri = UriComponentsBuilder.fromUriString(clientRegistration.getProviderDetails().getAuthorizationUri())
-                .queryParam("client_id", clientRegistration.getClientId())
-                .queryParam("response_type", "code")
-                .queryParam("include_granted_scopes", true)
-                .queryParam("scope", String.join("+", clientRegistration.getScopes()))
-                .queryParam("state", state)
-                .queryParam("redirect_uri", clientRegistration.getRedirectUri())
-                .build().encode(StandardCharsets.UTF_8).toUriString();
-
-        response.sendRedirect(authorizationUri);
+        OAuth2Service oAuth2Service = OAuth2ServiceFactory.getOAuth2Service(restTemplate, provider);
+        oAuth2Service.redirectAuthorizePage(clientRegistration, state, response);
     }
 
     /* 각 소셜 서비스로부터 인증 결과를 처리하는 컨트롤러 */
@@ -95,15 +88,15 @@ public class AuthenticationController {
 
         //사용자의 요청에 맞는 OAuth2 클라이언트 정보를 매핑한다
         ClientRegistration clientRegistration = clientRegistrationRepository.findByRegistrationId(provider);
-        OAuth2Service oAuth2Service = OAuth2ServiceFactory.getOAuth2Service(restTemplate, clientRegistration.getRegistrationId());
+        OAuth2Service oAuth2Service = OAuth2ServiceFactory.getOAuth2Service(restTemplate, provider);
 
         //토큰과 유저 정보를 요청
-        String accessToken = oAuth2Service.getAccessToken(clientRegistration, oAuth2AuthorizationResponse.getCode(), oAuth2AuthorizationResponse.getState());
-        OAuth2UserInfo oAuth2UserInfo = oAuth2Service.getUserInfo(clientRegistration, accessToken);
+        OAuth2Token oAuth2Token = oAuth2Service.getAccessToken(clientRegistration, oAuth2AuthorizationResponse.getCode(), oAuth2AuthorizationResponse.getState());
+        OAuth2UserInfo oAuth2UserInfo = oAuth2Service.getUserInfo(clientRegistration, oAuth2Token.getToken());
 
         //로그인에 대한 콜백 처리
         if (oAuth2AuthorizationRequest.getCallback().equalsIgnoreCase("login")) {
-            UserDetails userDetails = authenticationService.loadUser(provider, oAuth2UserInfo);
+            UserDetails userDetails = authenticationService.registerOrLoadOAuth2User(provider, oAuth2Token, oAuth2UserInfo);
             createTokenCookie(userDetails, response);
         }
         //계정 연동에 대한 콜백 처리
@@ -115,41 +108,42 @@ public class AuthenticationController {
             }
 
             try {
-                authenticationService.linkAccount(loginUser.getUsername(), provider, oAuth2UserInfo);
+                authenticationService.linkOAuth2Account(loginUser.getUsername(), provider, oAuth2Token, oAuth2UserInfo);
             } catch (OAuth2ProcessException e) {
                 redirectWithErrorMessage(oAuth2AuthorizationRequest.getReferer(), "already_linked", response);
                 return;
             }
         }
-        //계정 연동 해제에 대한 콜백 처리
-        else if (oAuth2AuthorizationRequest.getCallback().equalsIgnoreCase("unlink")) {
-            //로그인 상태가 아니면
-            if (loginUser == null) {
-                redirectWithErrorMessage(oAuth2AuthorizationRequest.getReferer(), "unauthorized", response);
-                return;
-            }
-            //계정 생성에 사용된 소셜 계정이면 연동 해제 방지
-            if (loginUser.getUsername().equalsIgnoreCase(provider + "_" + oAuth2UserInfo.getId())) {
-                redirectWithErrorMessage(oAuth2AuthorizationRequest.getReferer(), "impossible_unlink", response);
-                return;
-            }
-
-            try {
-                //연동해제 요청
-                oAuth2Service.unlink(clientRegistration, accessToken);
-                //연동해제된 계정 삭제
-                authenticationService.unlinkAccount(provider, oAuth2UserInfo, loginUser.getId());
-            }catch (OAuth2ProcessException e) {
-                redirectWithErrorMessage(oAuth2AuthorizationRequest.getReferer(), "impossible_unlink", response);
-                return;
-            }
-        } else {
-            redirectWithErrorMessage(oAuth2AuthorizationRequest.getReferer(), "not_supported_callback", response);
-            return;
-        }
 
         //콜백 성공
         response.sendRedirect(oAuth2AuthorizationRequest.getRedirectUri());
+    }
+
+    @PostMapping("/oauth2/unlink/{provider}")
+    public void unlinkOAuth2Account(@PathVariable String provider, @AuthenticationPrincipal CustomUserDetails loginUser) {
+
+        //로그인 상태가 아니면
+        if (loginUser == null)
+            throw new OAuth2ProcessException("Unauthorized");
+
+        //소셜 계정으로 생성된 계정이면 연동 해제 방지
+        if (loginUser.getType().equals(UserType.OAUTH))
+            throw new OAuth2ProcessException("This account created by social");
+
+        //사용자의 요청에 맞는 OAuth2 클라이언트 정보를 매핑한다
+        ClientRegistration clientRegistration = clientRegistrationRepository.findByRegistrationId(provider);
+        OAuth2Service oAuth2Service = OAuth2ServiceFactory.getOAuth2Service(restTemplate, provider);
+
+        OAuth2AccountDTO oAuth2AccountDTO = authenticationService.loadOAuth2Account(provider, loginUser.getId());
+
+        //토큰이 만료된 경우 재발급 요청 후 연동 해제 요청
+        if (LocalDateTime.now().isAfter(oAuth2AccountDTO.getTokenExpiredAt())) {
+            OAuth2Token oAuth2Token = oAuth2Service.refreshOAuth2Token(clientRegistration, oAuth2AccountDTO.getRefreshToken());
+            oAuth2Service.unlink(clientRegistration, oAuth2Token.getToken());
+        } else oAuth2Service.unlink(clientRegistration, oAuth2AccountDTO.getToken());
+
+        //연동해제된 소셜 계정 정보 삭제
+        authenticationService.unlinkOAuth2Account(oAuth2AccountDTO.getProvider(), oAuth2AccountDTO.getProviderId(), loginUser.getId());
     }
 
     private void createTokenCookie(UserDetails userDetails, HttpServletResponse response) throws IOException {
@@ -174,5 +168,10 @@ public class AuthenticationController {
         String redirectUri = UriComponentsBuilder.fromUriString(uri)
                 .replaceQueryParam("error", message).encode().build().toUriString();
         response.sendRedirect(redirectUri);
+    }
+
+    private String generateState() {
+        SecureRandom random = new SecureRandom();
+        return new BigInteger(130, random).toString(32);
     }
 }

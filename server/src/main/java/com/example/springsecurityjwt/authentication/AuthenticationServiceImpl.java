@@ -1,7 +1,9 @@
 package com.example.springsecurityjwt.authentication;
 
 import com.example.springsecurityjwt.authentication.oauth2.OAuth2ProcessException;
+import com.example.springsecurityjwt.authentication.oauth2.OAuth2Token;
 import com.example.springsecurityjwt.authentication.oauth2.account.OAuth2Account;
+import com.example.springsecurityjwt.authentication.oauth2.account.OAuth2AccountDTO;
 import com.example.springsecurityjwt.authentication.oauth2.account.OAuth2AccountRepository;
 import com.example.springsecurityjwt.authentication.oauth2.userInfo.OAuth2UserInfo;
 import com.example.springsecurityjwt.security.CustomUserDetails;
@@ -43,14 +45,17 @@ public class AuthenticationServiceImpl implements AuthenticationService {
 
     @Override
     @Transactional
-    public UserDetails loadUser(String provider, OAuth2UserInfo userInfo) {
+    public UserDetails registerOrLoadOAuth2User(String provider, OAuth2Token oAuth2Token, OAuth2UserInfo userInfo) {
 
-        Optional<OAuth2Account> oAuth2Account = oAuth2AccountRepository.findByProviderAndProviderId(provider, userInfo.getId());
+        Optional<OAuth2Account> optOAuth2Account = oAuth2AccountRepository.findByProviderAndProviderId(provider, userInfo.getId());
         User user = null;
 
         //가입된 계정이 존재할때
-        if (oAuth2Account.isPresent()) {
-            user = oAuth2Account.get().getUser();
+        if (optOAuth2Account.isPresent()) {
+            OAuth2Account oAuth2Account = optOAuth2Account.get();
+            user = oAuth2Account.getUser();
+            //토큰 업데이트
+            oAuth2Account.updateToken(oAuth2Token.getToken(), oAuth2Token.getRefreshToken(), oAuth2Token.getExpiredAt());
         }
         //가입된 계정이 존재하지 않을때
         else {
@@ -78,42 +83,84 @@ public class AuthenticationServiceImpl implements AuthenticationService {
             if(user.getId() == null)
                 userRepository.save(user);
 
-            OAuth2Account newAccount = OAuth2Account.builder().provider(provider).providerId(userInfo.getId()).user(user).build();
+            //소셜 계정 정보 생성
+            OAuth2Account newAccount = OAuth2Account.builder()
+                    .provider(provider)
+                    .providerId(userInfo.getId())
+                    .user(user)
+                    .token(oAuth2Token.getToken())
+                    .refreshToken(oAuth2Token.getRefreshToken())
+                    .tokenExpiredAt(oAuth2Token.getExpiredAt())
+                    .build();
+
             oAuth2AccountRepository.save(newAccount);
         }
 
-        CustomUserDetails userDetails = CustomUserDetails.builder().id(user.getId()).username(user.getUsername()).name(user.getName()).email(user.getEmail()).authorities(user.getAuthorities()).build();
-        return userDetails;
+        return CustomUserDetails.builder()
+                .id(user.getId())
+                .username(user.getUsername())
+                .name(user.getName())
+                .email(user.getEmail())
+                .type(user.getType())
+                .authorities(user.getAuthorities()).build();
     }
 
     @Override
     @Transactional
-    public UserDetails linkAccount(String targetUsername, String provider, OAuth2UserInfo userInfo) {
+    public UserDetails linkOAuth2Account(String targetUsername, String provider, OAuth2Token oAuth2Token, OAuth2UserInfo userInfo) {
 
+        //해당 소셜 계정으로 연동된 계정이 존재하는 경우
         if (oAuth2AccountRepository.existsByProviderAndProviderId(provider, userInfo.getId()))
             throw new OAuth2ProcessException("This account is already linked");
 
         User user = userRepository.findByUsername(targetUsername)
                 .orElseThrow(() -> new UsernameNotFoundException("Member not found"));
 
+        //계정과 연동된 소셜 계정이 존재하는 경우
+        if(oAuth2AccountRepository.existsByUser(user))
+            throw new OAuth2ProcessException("This user has already linked account");
+
+        //소셜 계정 정보 생성
         OAuth2Account oAuth2Account = OAuth2Account.builder()
                 .provider(provider)
                 .providerId(userInfo.getId())
                 .user(user)
+                .token(oAuth2Token.getToken())
+                .refreshToken(oAuth2Token.getRefreshToken())
+                .tokenExpiredAt(oAuth2Token.getExpiredAt())
                 .build();
 
         oAuth2AccountRepository.save(oAuth2Account);
 
-        return CustomUserDetails.builder().id(user.getId()).username(user.getUsername()).name(user.getName()).email(user.getEmail()).authorities(user.getAuthorities()).build();
+        return CustomUserDetails.builder()
+                .id(user.getId())
+                .username(user.getUsername())
+                .name(user.getName())
+                .email(user.getEmail())
+                .type(user.getType())
+                .authorities(user.getAuthorities()).build();
+    }
+
+    @Override
+    public OAuth2AccountDTO loadOAuth2Account(String provider, Long userId) {
+        OAuth2Account oAuth2Account = oAuth2AccountRepository.findByProviderAndUserId(provider, userId).orElseThrow(() -> new OAuth2ProcessException("Not found this account"));
+        return OAuth2AccountDTO.builder()
+                .provider(oAuth2Account.getProvider())
+                .providerId(oAuth2Account.getProviderId())
+                .token(oAuth2Account.getToken())
+                .refreshToken(oAuth2Account.getRefreshToken())
+                .tokenExpiredAt(oAuth2Account.getTokenExpiredAt())
+                .build();
     }
 
     @Override
     @Transactional
-    public void unlinkAccount(String provider, OAuth2UserInfo userInfo, Long userId) {
-        //연동해제 요청시 진행한 인증 과정에서 동일한 계정으로 인증되었는지 검사
-        if(!oAuth2AccountRepository.existsByProviderAndProviderIdAndUserId(provider, userInfo.getId(), userId))
-            throw new OAuth2ProcessException("This account does not exist");
+    public void unlinkOAuth2Account(String provider, String providerId, Long userId) {
+        OAuth2Account oAuth2Account = oAuth2AccountRepository.findByProviderAndProviderIdAndUserId(provider, providerId, userId).orElseThrow(() -> new OAuth2ProcessException("Account not found"));
 
-        oAuth2AccountRepository.deleteByProviderAndProviderIdAndUserId(provider, userInfo.getId(), userId);
+        if(oAuth2Account.getUser().getType().equals(UserType.OAUTH))
+            throw new OAuth2ProcessException("This account type is OAUTH");
+
+        oAuth2AccountRepository.delete(oAuth2Account);
     }
 }

@@ -38,8 +38,6 @@ public class AuthenticationApiTest {
     @Autowired
     private ObjectMapper objectMapper;
     @Autowired
-    private UserRepository userRepository;
-    @Autowired
     private JwtProvider jwtProvider;
 
     private final String GOOGLE_AUTHORIZATION_URI = "https://accounts.google.com/o/oauth2/auth";

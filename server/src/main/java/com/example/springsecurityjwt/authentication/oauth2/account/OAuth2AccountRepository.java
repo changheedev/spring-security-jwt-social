@@ -8,9 +8,10 @@ import java.util.Optional;
 
 public interface OAuth2AccountRepository extends JpaRepository<OAuth2Account, Long> {
 
-    boolean existsByProviderAndProviderId(String provider, String providerId);
+    Optional<OAuth2Account> findByUser(User user);
+    Optional<OAuth2Account> findByProviderAndUserId(String provider, Long userId);
     Optional<OAuth2Account> findByProviderAndProviderId(String provider, String providerId);
-    List<OAuth2Account> findAllByUser(User user);
-    boolean existsByProviderAndProviderIdAndUserId(String provider, String providerId, Long userId);
-    void deleteByProviderAndProviderIdAndUserId(String provider, String providerId, Long userId);
+    Optional<OAuth2Account> findByProviderAndProviderIdAndUserId(String provider, String providerId, Long userId);
+    boolean existsByUser(User user);
+    boolean existsByProviderAndProviderId(String provider, String providerId);
 }
