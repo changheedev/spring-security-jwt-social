@@ -1,13 +1,12 @@
 package com.example.springsecurityjwt.jwt;
 
 
+import com.example.springsecurityjwt.util.DateConvertor;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import org.springframework.stereotype.Component;
 
 import java.time.LocalDateTime;
-import java.time.ZoneId;
-import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.function.Function;
@@ -25,8 +24,8 @@ public class JwtProvider {
         return extractClaim(token, Claims::getSubject);
     }
 
-    private LocalDateTime extractExpiration(String token) {
-        return LocalDateTime.ofInstant(extractClaim(token, Claims::getExpiration).toInstant(), ZoneId.systemDefault());
+    public LocalDateTime extractExpiration(String token) {
+        return DateConvertor.toLocalDateTime(extractClaim(token, Claims::getExpiration));
     }
 
     private <T> T extractClaim(String token, Function<Claims, T> claimsResolver) {
@@ -52,8 +51,8 @@ public class JwtProvider {
         return Jwts.builder()
                 .setClaims(claims)
                 .setSubject(subject)
-                .setIssuedAt(Date.from(LocalDateTime.now().atZone(ZoneId.systemDefault()).toInstant()))
-                .setExpiration(Date.from(expiryDate.atZone(ZoneId.systemDefault()).toInstant()))
+                .setIssuedAt(DateConvertor.toDate(LocalDateTime.now()))
+                .setExpiration(DateConvertor.toDate(expiryDate))
                 .signWith(jwtProperties.getSignatureAlgorithm(), jwtProperties.getSecretKey())
                 .compact();
     }
