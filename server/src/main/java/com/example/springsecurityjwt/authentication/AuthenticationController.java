@@ -148,15 +148,13 @@ public class AuthenticationController {
 
     private void createTokenCookie(UserDetails userDetails, HttpServletResponse response) throws IOException {
         final int cookieMaxAge = jwtProvider.getTokenExpirationDate().intValue();
-
+        boolean secure = false;
         //운영 환경인 경우 secure 옵션사용
-        if (Arrays.stream(environment.getActiveProfiles()).anyMatch(profile -> profile.equalsIgnoreCase("prod"))) {
-            CookieUtils.addCookie(response, "access_token", jwtProvider.generateToken(userDetails.getUsername()), true, true, cookieMaxAge);
-            CookieUtils.addCookie(response, "logged_name", URLEncoder.encode(((CustomUserDetails) userDetails).getName(), "utf-8"), true, true, cookieMaxAge);
-        } else {
-            CookieUtils.addCookie(response, "access_token", jwtProvider.generateToken(userDetails.getUsername()), true, false, cookieMaxAge);
-            CookieUtils.addCookie(response, "logged_name", URLEncoder.encode(((CustomUserDetails) userDetails).getName(), "utf-8"), true, false, cookieMaxAge);
-        }
+        if (Arrays.stream(environment.getActiveProfiles()).anyMatch(profile -> profile.equalsIgnoreCase("prod")))
+            secure = true;
+        
+        CookieUtils.addCookie(response, "access_token", jwtProvider.generateToken(userDetails.getUsername()), true, secure, cookieMaxAge);
+        CookieUtils.addCookie(response, "logged_name", URLEncoder.encode(((CustomUserDetails) userDetails).getName(), "utf-8"), true, secure, cookieMaxAge);
     }
 
     private void removeTokenCookie(HttpServletRequest request, HttpServletResponse response) {
