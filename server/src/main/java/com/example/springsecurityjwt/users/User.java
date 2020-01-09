@@ -1,5 +1,6 @@
 package com.example.springsecurityjwt.users;
 
+import com.example.springsecurityjwt.authentication.oauth2.account.OAuth2Account;
 import com.example.springsecurityjwt.entity.BaseEntity;
 import com.example.springsecurityjwt.security.AuthorityType;
 import lombok.AccessLevel;
@@ -40,6 +41,10 @@ public class User extends BaseEntity {
     @Enumerated(EnumType.STRING)
     private List<AuthorityType> authorities = new ArrayList<>();
 
+    @OneToOne(fetch = FetchType.LAZY, cascade = CascadeType.ALL)
+    @JoinColumn(name = "SOCIAL_ID")
+    private OAuth2Account social;
+
     @Builder
     public User(String username, String name, String email, String password, UserType type) {
         this.username = username;
@@ -63,5 +68,15 @@ public class User extends BaseEntity {
         //일반 계정이라면 username 도 함께 변경해준다.
         if (type.equals(UserType.DEFAULT))
             this.username = email;
+    }
+
+    public void linkSocial(OAuth2Account oAuth2Account) {
+        this.social = oAuth2Account;
+        oAuth2Account.linkUser(this);
+    }
+
+    public void unlinkSocial() {
+        this.social.unlinkUser();
+        this.social = null;
     }
 }
