@@ -18,7 +18,6 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 
-import static org.hibernate.validator.internal.util.Contracts.assertNotNull;
 import static org.junit.jupiter.api.Assertions.*;
 
 @ExtendWith(SpringExtension.class)
@@ -209,12 +208,14 @@ public class UserServiceTest {
                 .build();
         userRepository.save(user);
 
-        OAuth2Account oAuth2Account = OAuth2Account.builder().provider("google").providerId("123456789").user(user).build();
+        OAuth2Account oAuth2Account = OAuth2Account.builder().provider("google").providerId("123456789").token("token").refreshToken("refresh_token").tokenExpiredAt(LocalDateTime.now().plusSeconds(3600)).build();
         oAuth2AccountRepository.save(oAuth2Account);
 
-        userService.unlinkOAuth2Account("google", "123456789", user.getId());
+        user.linkSocial(oAuth2Account);
+        userService.unlinkOAuth2Account(user.getUsername());
 
         //연동된 정보가 삭제되었는지 확인
+        assertNull(user.getSocial());
         assertFalse(oAuth2AccountRepository.existsByProviderAndProviderId("google", "123456789"));
     }
 
@@ -230,11 +231,38 @@ public class UserServiceTest {
                 .build();
         userRepository.save(user);
 
-        OAuth2Account oAuth2Account = OAuth2Account.builder().provider("google").providerId("123456789").user(user).build();
+        OAuth2Account oAuth2Account = OAuth2Account.builder().provider("google").providerId("123456789").token("token").refreshToken("refresh_token").tokenExpiredAt(LocalDateTime.now().plusSeconds(3600)).build();
         oAuth2AccountRepository.save(oAuth2Account);
 
+        user.linkSocial(oAuth2Account);
+
         assertThrows(OAuth2ProcessException.class, () -> {
-            userService.unlinkOAuth2Account("google", "123456789", user.getId());
+            userService.unlinkOAuth2Account(user.getUsername());
         });
+    }
+
+    @Test
+    @Transactional
+    public void 회원_탈퇴_시_소셜_계정도_함께_삭제되는지_검사() {
+        //given
+        User user = User.builder()
+                .username("test@email.com")
+                .email("test@email.com")
+                .name("ChangHee")
+                .type(UserType.OAUTH)
+                .build();
+        userRepository.save(user);
+
+        OAuth2Account oAuth2Account = OAuth2Account.builder().provider("google").providerId("123456789").token("token").refreshToken("refresh_token").tokenExpiredAt(LocalDateTime.now().plusSeconds(3600)).build();
+        oAuth2AccountRepository.save(oAuth2Account);
+
+        user.linkSocial(oAuth2Account);
+
+        //when
+        userService.withdrawUser(user.getUsername());
+
+        //then
+        assertFalse(userRepository.findByUsername(user.getUsername()).isPresent());
+        assertFalse(oAuth2AccountRepository.findByProviderAndProviderId("google", "123456789").isPresent());
     }
 }

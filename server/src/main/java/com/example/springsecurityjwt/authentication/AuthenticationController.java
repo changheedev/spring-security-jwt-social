@@ -66,7 +66,7 @@ public class AuthenticationController {
     public ResponseEntity<?> expiredRefreshToken(@AuthenticationPrincipal UserDetails loginUser, HttpServletRequest request, HttpServletResponse response) {
         if(loginUser == null) throw new UnauthorizedException("loginUser cannot be null");
 
-        removeTokenCookie(request, response);
+        CookieUtils.deleteAll(request, response);
         return ResponseEntity.ok("success");
     }
 
@@ -162,11 +162,6 @@ public class AuthenticationController {
 
         CookieUtils.addCookie(response, "access_token", jwtProvider.generateToken(userDetails.getUsername()), true, secure, cookieMaxAge);
         CookieUtils.addCookie(response, "logged_name", URLEncoder.encode(((CustomUserDetails) userDetails).getName(), "utf-8"), true, secure, cookieMaxAge);
-    }
-
-    private void removeTokenCookie(HttpServletRequest request, HttpServletResponse response) {
-        CookieUtils.deleteCookie(request, response, "access_token");
-        CookieUtils.deleteCookie(request, response, "logged_name");
     }
 
     private void redirectWithErrorMessage(String uri, String message, HttpServletResponse response) throws IOException {

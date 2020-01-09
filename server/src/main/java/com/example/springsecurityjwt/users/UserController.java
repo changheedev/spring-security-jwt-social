@@ -9,6 +9,7 @@ import com.example.springsecurityjwt.authentication.oauth2.service.OAuth2Service
 import com.example.springsecurityjwt.authentication.oauth2.service.OAuth2ServiceFactory;
 import com.example.springsecurityjwt.security.AuthorityType;
 import com.example.springsecurityjwt.security.CustomUserDetails;
+import com.example.springsecurityjwt.util.CookieUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
@@ -17,6 +18,8 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.client.RestTemplate;
 
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
@@ -58,5 +61,22 @@ public class UserController {
     @PutMapping("/me")
     public void updateProfile(@RequestBody UpdateProfileRequest updateProfileRequest, @AuthenticationPrincipal CustomUserDetails loginUser) {
         userService.updateProfile(loginUser.getUsername(), updateProfileRequest);
+    }
+
+    @DeleteMapping("/withdraw")
+    public void withdrawUser(@AuthenticationPrincipal CustomUserDetails loginUser, HttpServletRequest request, HttpServletResponse response) {
+        if(loginUser == null) throw new UnauthorizedException("loginUser cannot be null");
+
+        //연동된 소셜계정 정보가 있다면 연동해제 요청
+        Optional<OAuth2AccountDTO> optionalOAuth2AccountDTO = userService.getOAuth2Account(loginUser.getUsername());
+        if(optionalOAuth2AccountDTO.isPresent()) {
+            OAuth2AccountDTO oAuth2AccountDTO = optionalOAuth2AccountDTO.get();
+            ClientRegistration clientRegistration = clientRegistrationRepository.findByRegistrationId(oAuth2AccountDTO.getProvider());
+            OAuth2Service oAuth2Service = OAuth2ServiceFactory.getOAuth2Service(restTemplate, oAuth2AccountDTO.getProvider());
+            oAuth2Service.unlink(clientRegistration, oAuth2AccountDTO.getOAuth2Token());
+        }
+
+        userService.withdrawUser(loginUser.getUsername());
+        CookieUtils.deleteAll(request, response);
     }
 }

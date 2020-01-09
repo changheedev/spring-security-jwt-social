@@ -173,7 +173,7 @@ public class UserServiceImpl implements UserService {
         User user = userRepository.findByUsername(username).orElseThrow(() -> new UnauthorizedException("username cannot be null"));
 
         if(user.getType().equals(UserType.OAUTH) || user.getSocial() == null)
-            throw new RuntimeException("소셜 서비스로 가입된 계정이거나 연동된 정보가 없습니다");
+            throw new OAuth2ProcessException("소셜 서비스로 가입된 계정이거나 연동된 정보가 없습니다");
 
         //연관관계 해제
         OAuth2Account oAuth2Account = user.getSocial();

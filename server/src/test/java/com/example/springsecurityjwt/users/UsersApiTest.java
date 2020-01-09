@@ -65,8 +65,9 @@ public class UsersApiTest {
         //given
         User user = User.builder().name("Changhee").email("test@email.com").username("google_123456789").type(UserType.OAUTH).build();
         userRepository.save(user);
-        OAuth2Account oAuth2Account = OAuth2Account.builder().provider("google").providerId("123456789").user(user).token("token").refreshToken("refresh_token").tokenExpiredAt(LocalDateTime.now().plusSeconds(3600)).build();
+        OAuth2Account oAuth2Account = OAuth2Account.builder().provider("google").providerId("123456789").token("token").refreshToken("refresh_token").tokenExpiredAt(LocalDateTime.now().plusSeconds(3600)).build();
         oAuth2AccountRepository.save(oAuth2Account);
+        user.linkSocial(oAuth2Account);
 
         String token = jwtProvider.generateToken(user.getUsername());
         Cookie cookie = new Cookie("access_token", token);
@@ -113,7 +114,7 @@ public class UsersApiTest {
         cookie.setPath("/");
 
         UpdateProfileRequest updateProfileRequest = UpdateProfileRequest.builder().name("Updated name").email("test2@email.com").build();
-        MvcResult mvcResult = mockMvc.perform(put("/users")
+        MvcResult mvcResult = mockMvc.perform(put("/users/me")
                 .cookie(cookie).contentType(MediaType.APPLICATION_JSON_VALUE).content(JsonUtils.toJson(updateProfileRequest)))
                 .andExpect(status().isOk())
                 .andDo(print()).andReturn();
@@ -130,7 +131,7 @@ public class UsersApiTest {
         userRepository.save(user);
 
         UpdateProfileRequest updateProfileRequest = UpdateProfileRequest.builder().name("Updated name").email("test2@email.com").build();
-        MvcResult mvcResult = mockMvc.perform(put("/users")
+        MvcResult mvcResult = mockMvc.perform(put("/users/me")
                 .contentType(MediaType.APPLICATION_JSON_VALUE).content(JsonUtils.toJson(updateProfileRequest)))
                 .andExpect(status().isUnauthorized())
                 .andDo(print()).andReturn();
