@@ -3,7 +3,6 @@ package com.example.springsecurityjwt.authentication.oauth2.service;
 import com.example.springsecurityjwt.authentication.oauth2.ClientRegistration;
 import com.example.springsecurityjwt.authentication.oauth2.OAuth2ProcessException;
 import com.example.springsecurityjwt.authentication.oauth2.OAuth2Token;
-import com.example.springsecurityjwt.authentication.oauth2.account.OAuth2AccountRepository;
 import com.example.springsecurityjwt.authentication.oauth2.userInfo.OAuth2UserInfo;
 import com.example.springsecurityjwt.authentication.oauth2.userInfo.OAuth2UserInfoFactory;
 import com.example.springsecurityjwt.util.JsonUtils;
@@ -77,7 +76,11 @@ public abstract class OAuth2Service {
         return new OAuth2Token(accessToken, refreshToken, expiredAt);
     }
 
-    public OAuth2Token refreshOAuth2Token(ClientRegistration clientRegistration, String refreshToken) {
+    protected OAuth2Token refreshOAuth2Token(ClientRegistration clientRegistration, OAuth2Token token) {
+
+        //토큰이 만료되지 않았다면 원래 토큰을 리턴
+        if (LocalDateTime.now().isBefore(token.getExpiredAt())) return token;
+
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
 
@@ -85,7 +88,7 @@ public abstract class OAuth2Service {
         params.add("client_id", clientRegistration.getClientId());
         params.add("client_secret", clientRegistration.getClientSecret());
         params.add("grant_type", "refresh_token");
-        params.add("refresh_token", refreshToken);
+        params.add("refresh_token", token.getRefreshToken());
 
         HttpEntity<MultiValueMap<String, String>> httpEntity = new HttpEntity<>(params, headers);
 
@@ -103,7 +106,7 @@ public abstract class OAuth2Service {
         String newRefreshToken = jsonObj.get("refresh_token").getAsString();
         LocalDateTime expiredAt = LocalDateTime.now().plusSeconds(jsonObj.get("expires_in").getAsLong());
 
-        return new OAuth2Token(accessToken, newRefreshToken != null ? newRefreshToken : refreshToken, expiredAt);
+        return new OAuth2Token(accessToken, newRefreshToken != null ? newRefreshToken : token.getRefreshToken(), expiredAt);
     }
 
     public OAuth2UserInfo getUserInfo(ClientRegistration clientRegistration, String accessToken) {
@@ -130,5 +133,5 @@ public abstract class OAuth2Service {
         return userInfo;
     }
 
-    public abstract void unlink(ClientRegistration clientRegistration, String accessToken);
+    public abstract void unlink(ClientRegistration clientRegistration, OAuth2Token token);
 }

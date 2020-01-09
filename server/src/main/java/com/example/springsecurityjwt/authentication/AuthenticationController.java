@@ -32,7 +32,6 @@ import java.io.IOException;
 import java.math.BigInteger;
 import java.net.URLEncoder;
 import java.security.SecureRandom;
-import java.time.LocalDateTime;
 import java.util.Arrays;
 import java.util.Optional;
 
@@ -65,7 +64,7 @@ public class AuthenticationController {
     /* 토큰 쿠키를 삭제하는 컨트롤러 (로그아웃) */
     @PostMapping("/logout")
     public ResponseEntity<?> expiredRefreshToken(@AuthenticationPrincipal UserDetails loginUser, HttpServletRequest request, HttpServletResponse response) {
-        if (loginUser == null) throw new UnauthorizedException("loginUser cannot be null");
+        if(loginUser == null) throw new UnauthorizedException("loginUser cannot be null");
 
         removeTokenCookie(request, response);
         return ResponseEntity.ok("success");
@@ -135,27 +134,22 @@ public class AuthenticationController {
     public void unlinkOAuth2Account(@PathVariable String provider, @AuthenticationPrincipal CustomUserDetails loginUser) {
 
         //로그인 상태가 아니면
-        if (loginUser == null) throw new UnauthorizedException("loginUser cannot be null");
+        if(loginUser == null) throw new UnauthorizedException("loginUser cannot be null");
 
         //소셜 계정으로 생성된 계정이면 연동 해제 방지
         if (loginUser.getType().equals(UserType.OAUTH))
             throw new OAuth2ProcessException("This account created by social");
 
-        //사용자의 요청에 맞는 OAuth2 클라이언트 정보를 매핑한다
-        ClientRegistration clientRegistration = clientRegistrationRepository.findByRegistrationId(provider);
-        OAuth2Service oAuth2Service = OAuth2ServiceFactory.getOAuth2Service(restTemplate, provider);
-
         //연동된 소셜계정 정보가 있는지 검사
         Optional<OAuth2AccountDTO> optionalOAuth2AccountDTO = userService.getOAuth2Account(loginUser.getUsername());
-        if (!optionalOAuth2AccountDTO.isPresent()) throw new OAuth2ProcessException("연동된 계정 정보가 없습니다.");
+        if(!optionalOAuth2AccountDTO.isPresent()) throw new OAuth2ProcessException("연동된 계정 정보가 없습니다.");
 
-        //토큰이 만료된 경우 재발급 요청 후 연동 해제 요청
+        //OAuth 인증 서버에 연동해제 요청
         OAuth2AccountDTO oAuth2AccountDTO = optionalOAuth2AccountDTO.get();
-        if (LocalDateTime.now().isAfter(oAuth2AccountDTO.getOAuth2Token().getExpiredAt())) {
-            OAuth2Token oAuth2Token = oAuth2Service.refreshOAuth2Token(clientRegistration, oAuth2AccountDTO.getOAuth2Token().getRefreshToken());
-            oAuth2Service.unlink(clientRegistration, oAuth2Token.getToken());
-        } else oAuth2Service.unlink(clientRegistration, oAuth2AccountDTO.getOAuth2Token().getToken());
-
+        ClientRegistration clientRegistration = clientRegistrationRepository.findByRegistrationId(oAuth2AccountDTO.getProvider());
+        OAuth2Service oAuth2Service = OAuth2ServiceFactory.getOAuth2Service(restTemplate, oAuth2AccountDTO.getProvider());
+        oAuth2Service.unlink(clientRegistration, oAuth2AccountDTO.getOAuth2Token());
+        
         userService.unlinkOAuth2Account(loginUser.getUsername());
     }
 

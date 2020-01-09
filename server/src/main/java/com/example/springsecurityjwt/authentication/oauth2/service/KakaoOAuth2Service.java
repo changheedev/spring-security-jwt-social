@@ -2,6 +2,7 @@ package com.example.springsecurityjwt.authentication.oauth2.service;
 
 import com.example.springsecurityjwt.authentication.oauth2.ClientRegistration;
 import com.example.springsecurityjwt.authentication.oauth2.OAuth2ProcessException;
+import com.example.springsecurityjwt.authentication.oauth2.OAuth2Token;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
@@ -16,9 +17,13 @@ public class KakaoOAuth2Service extends OAuth2Service{
     }
 
     @Override
-    public void unlink(ClientRegistration clientRegistration, String accessToken){
+    public void unlink(ClientRegistration clientRegistration, OAuth2Token token){
+
+        //토큰이 만료되었다면 토큰을 갱신
+        token = refreshOAuth2Token(clientRegistration, token);
+
         HttpHeaders headers = new HttpHeaders();
-        headers.add("Authorization", "Bearer " + accessToken);
+        headers.add("Authorization", "Bearer " + token.getToken());
 
         HttpEntity<MultiValueMap<String, String>> httpEntity = new HttpEntity<>(headers);
 

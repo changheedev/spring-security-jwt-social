@@ -2,6 +2,7 @@ package com.example.springsecurityjwt.authentication.oauth2.service;
 
 import com.example.springsecurityjwt.authentication.oauth2.ClientRegistration;
 import com.example.springsecurityjwt.authentication.oauth2.OAuth2ProcessException;
+import com.example.springsecurityjwt.authentication.oauth2.OAuth2Token;
 import org.springframework.http.*;
 import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.HttpStatusCodeException;
@@ -14,7 +15,10 @@ public class GoogleOAuth2Service extends OAuth2Service{
     }
 
     @Override
-    public void unlink(ClientRegistration clientRegistration, String accessToken){
+    public void unlink(ClientRegistration clientRegistration, OAuth2Token token){
+
+        //토큰이 만료되었다면 토큰을 갱신
+        token = refreshOAuth2Token(clientRegistration, token);
 
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
@@ -22,8 +26,7 @@ public class GoogleOAuth2Service extends OAuth2Service{
         HttpEntity<MultiValueMap<String, String>> httpEntity = new HttpEntity<>(headers);
 
         String unlinkUri = UriComponentsBuilder.fromUriString(clientRegistration.getProviderDetails().getUnlinkUri())
-                .queryParam("token", accessToken).encode().build().toUriString();
-
+                .queryParam("token", token.getToken()).encode().build().toUriString();
 
         ResponseEntity<String> entity = null;
         try {
