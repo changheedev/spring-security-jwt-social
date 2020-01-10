@@ -1,10 +1,12 @@
 package com.example.springsecurityjwt.authentication;
 
 import com.example.springsecurityjwt.SpringMvcTestSupport;
+import com.example.springsecurityjwt.advice.CommonExceptionAdvice;
 import com.example.springsecurityjwt.jwt.JwtProvider;
 import com.example.springsecurityjwt.users.SignUpRequest;
 import com.example.springsecurityjwt.users.UserRepository;
 import com.example.springsecurityjwt.util.JsonUtils;
+import com.google.gson.reflect.TypeToken;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.slf4j.Logger;
@@ -16,6 +18,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import javax.servlet.http.Cookie;
 import java.nio.charset.StandardCharsets;
+import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -73,16 +76,46 @@ public class AuthenticationApiTest {
     @Test
     public void 틀린_이메일_또는_비밀번호를_사용할때_로그인_실패_테스트() throws Exception {
 
+        //given
         AuthorizationRequest authorizationRequest = AuthorizationRequest.builder()
                 .username("not_registerd@email.com")
                 .password("password")
                 .build();
 
+        //when
         MvcResult mvcResult = mockMvc.perform(post("/authorize")
                 .contentType(MediaType.APPLICATION_JSON_VALUE)
                 .content(JsonUtils.toJson(authorizationRequest)))
                 .andExpect(status().isBadRequest())
                 .andDo(print()).andReturn();
+    }
+
+    @Test
+    public void 로그인_validation_테스트() throws Exception {
+
+        //given
+        AuthorizationRequest authorizationRequest = AuthorizationRequest.builder()
+                .username("not_registerd@email.com")
+                .password("")
+                .build();
+
+        //when
+        MvcResult mvcResult = mockMvc.perform(post("/authorize")
+                .contentType(MediaType.APPLICATION_JSON_VALUE)
+                .content(JsonUtils.toJson(authorizationRequest)))
+                .andExpect(status().isBadRequest())
+                .andDo(print()).andReturn();
+
+        //then
+        String content = mvcResult.getResponse().getContentAsString();
+        List<CommonExceptionAdvice.ValidationError> errors = JsonUtils.fromJson(content, new TypeToken<List<CommonExceptionAdvice.ValidationError>>(){}.getType());
+        assertEquals(errors.size(), 1);
+        errors.forEach(error -> {
+            assertEquals(error.getField(), "password");
+            log.debug(error.getField());
+            log.debug(error.getMessage());
+        });
+
     }
 
     @Test
