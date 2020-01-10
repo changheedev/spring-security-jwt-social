@@ -8,6 +8,9 @@ spring:
     driver-class-name: org.mariadb.jdbc.Driver
   jpa:
     database-platform: org.hibernate.dialect.MariaDB103Dialect
+  http:
+    encoding:
+      force: true #utf-8 encoding
   security:
     oauth2:
       client:
