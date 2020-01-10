@@ -10,7 +10,11 @@ import com.example.springsecurityjwt.security.CustomUserDetails;
 import com.example.springsecurityjwt.users.UserService;
 import com.example.springsecurityjwt.users.UserType;
 import com.example.springsecurityjwt.util.CookieUtils;
+<<<<<<< HEAD
 import com.example.springsecurityjwt.util.JsonUtils;
+=======
+import com.example.springsecurityjwt.validation.ValidationException;
+>>>>>>> 3a155d2... Add validation to login, signup, update profile
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.env.Environment;
@@ -21,6 +25,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.util.UriComponentsBuilder;
@@ -50,7 +55,9 @@ public class AuthenticationController {
 
     /* 사용자의 계정을 인증하고 로그인 토큰을 발급해주는 컨트롤러 */
     @PostMapping("/authorize")
-    public void authenticateUsernamePassword(@Valid @RequestBody AuthorizationRequest authorizationRequest, HttpServletRequest request, HttpServletResponse response) throws IOException {
+    public void authenticateUsernamePassword(@Valid @RequestBody AuthorizationRequest authorizationRequest, BindingResult bindingResult, HttpServletRequest request, HttpServletResponse response) throws IOException {
+
+        if(bindingResult.hasErrors()) throw new ValidationException("Validation error", bindingResult.getFieldErrors());
 
         try {
             Authentication authentication = authenticationManager.authenticate(new UsernamePasswordAuthenticationToken(authorizationRequest.getUsername(), authorizationRequest.getPassword()));

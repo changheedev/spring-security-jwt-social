@@ -1,16 +1,17 @@
 package com.example.springsecurityjwt.authentication;
 
-import com.sun.istack.NotNull;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.Setter;
 
+import javax.validation.constraints.NotBlank;
+
 @Getter
 @Setter
 public class AuthorizationRequest {
-    @NotNull
+    @NotBlank(message = "이메일을 입력하세요.")
     private String username;
-    @NotNull
+    @NotBlank(message = "패스워드를 입력하세요.")
     private String password;
 
     @Builder

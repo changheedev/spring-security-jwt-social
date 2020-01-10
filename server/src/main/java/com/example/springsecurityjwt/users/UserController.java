@@ -3,23 +3,25 @@ package com.example.springsecurityjwt.users;
 import com.example.springsecurityjwt.authentication.UnauthorizedException;
 import com.example.springsecurityjwt.authentication.oauth2.ClientRegistration;
 import com.example.springsecurityjwt.authentication.oauth2.ClientRegistrationRepository;
-import com.example.springsecurityjwt.authentication.oauth2.OAuth2ProcessException;
 import com.example.springsecurityjwt.authentication.oauth2.account.OAuth2AccountDTO;
 import com.example.springsecurityjwt.authentication.oauth2.service.OAuth2Service;
 import com.example.springsecurityjwt.authentication.oauth2.service.OAuth2ServiceFactory;
 import com.example.springsecurityjwt.security.AuthorityType;
 import com.example.springsecurityjwt.security.CustomUserDetails;
 import com.example.springsecurityjwt.util.CookieUtils;
+import com.example.springsecurityjwt.validation.ValidationException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.client.RestTemplate;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
+import javax.validation.Valid;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
@@ -34,7 +36,9 @@ public class UserController {
     private final ClientRegistrationRepository clientRegistrationRepository;
 
     @PostMapping("")
-    public ResponseEntity<?> signUpNewUser(@RequestBody SignUpRequest signUpRequest) throws Exception {
+    public ResponseEntity<?> signUpNewUser(@RequestBody @Valid SignUpRequest signUpRequest, BindingResult bindingResult) throws Exception {
+
+        if(bindingResult.hasErrors()) throw new ValidationException("validation error", bindingResult.getFieldErrors());
         userService.signUpService(signUpRequest);
         return ResponseEntity.ok("Success");
     }
@@ -59,7 +63,9 @@ public class UserController {
     }
 
     @PutMapping("/me")
-    public void updateProfile(@RequestBody UpdateProfileRequest updateProfileRequest, @AuthenticationPrincipal CustomUserDetails loginUser) {
+    public void updateProfile(@RequestBody @Valid UpdateProfileRequest updateProfileRequest, BindingResult bindingResult, @AuthenticationPrincipal CustomUserDetails loginUser) {
+
+        if(bindingResult.hasErrors()) throw new ValidationException("Validation error", bindingResult.getFieldErrors());
         userService.updateProfile(loginUser.getUsername(), updateProfileRequest);
     }
 
