@@ -4,17 +4,14 @@ import com.example.springsecurityjwt.SpringMvcTestSupport;
 import com.example.springsecurityjwt.advice.CommonExceptionAdvice;
 import com.example.springsecurityjwt.jwt.JwtProvider;
 import com.example.springsecurityjwt.users.SignUpRequest;
-import com.example.springsecurityjwt.users.UserRepository;
 import com.example.springsecurityjwt.util.JsonUtils;
 import com.google.gson.reflect.TypeToken;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.util.UriComponentsBuilder;
 
 import javax.servlet.http.Cookie;
 import java.nio.charset.StandardCharsets;
@@ -24,22 +21,10 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.print;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrlPattern;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+public class AuthenticationApiTest extends SpringMvcTestSupport{
 
-@ExtendWith(SpringExtension.class)
-@SpringBootTest
-@AutoConfigureMockMvc
-public class AuthenticationApiTest {
-
-    private final Logger log = LoggerFactory.getLogger(AuthenticationApiTest.class);
-
-    @Autowired
-    private MockMvc mockMvc;
-
-    @Autowired
-    private ObjectMapper objectMapper;
     @Autowired
     private JwtProvider jwtProvider;
 
@@ -119,6 +104,7 @@ public class AuthenticationApiTest {
     }
 
     @Test
+    @Transactional
     public void 로그아웃_테스트() throws Exception {
 
         SignUpRequest signUpRequest = registerTestUser("test@email.com", "ChangHee", "password");
@@ -128,7 +114,7 @@ public class AuthenticationApiTest {
         cookie.setHttpOnly(true);
         cookie.setPath("/");
 
-        MvcResult mvcResult = mockMvc.perform(post("/authorize/logout")
+        MvcResult mvcResult = mockMvc.perform(post("/logout")
                 .cookie(cookie))
                 .andExpect(status().isOk())
                 .andDo(print()).andReturn();
@@ -139,7 +125,7 @@ public class AuthenticationApiTest {
     @Test
     public void 인증_토큰이_없을때_로그아웃_요청_실패_테스트() throws Exception {
 
-        MvcResult mvcResult = mockMvc.perform(post("/authorize/logout"))
+        MvcResult mvcResult = mockMvc.perform(post("/logout"))
                 .andExpect(status().isUnauthorized())
                 .andDo(print()).andReturn();
     }
@@ -154,10 +140,7 @@ public class AuthenticationApiTest {
                 .build().encode(StandardCharsets.UTF_8).toUriString();
 
         //when
-        MvcResult result = mockMvc.perform(post("/oauth2/attributes")
-                .cookie(new Cookie("redirect_uri", AUTHENTICATION_REDIRECT_URI.toString()))
-                .contentType(MediaType.APPLICATION_JSON_VALUE)
-                .content(jsonUtils.toJson(oAuth2AdditionalAttributesRequest)))
+        MvcResult mvcResult = mockMvc.perform(get(googleLogin))
                 .andExpect(status().isFound())
                 .andDo(print()).andReturn();
 
@@ -222,7 +205,7 @@ public class AuthenticationApiTest {
     private void requestSignUpApi(SignUpRequest signUpRequest) throws Exception {
         MvcResult mvcResult = mockMvc.perform(post("/users")
                 .contentType(MediaType.APPLICATION_JSON_VALUE)
-                .content(jsonUtils.toJson(signUpRequest)))
+                .content(JsonUtils.toJson(signUpRequest)))
                 .andExpect(status().isOk())
                 .andDo(print())
                 .andReturn();

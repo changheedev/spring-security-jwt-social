@@ -10,11 +10,8 @@ import com.example.springsecurityjwt.security.CustomUserDetails;
 import com.example.springsecurityjwt.users.UserService;
 import com.example.springsecurityjwt.users.UserType;
 import com.example.springsecurityjwt.util.CookieUtils;
-<<<<<<< HEAD
-import com.example.springsecurityjwt.util.JsonUtils;
-=======
 import com.example.springsecurityjwt.validation.ValidationException;
->>>>>>> 3a155d2... Add validation to login, signup, update profile
+
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.env.Environment;
@@ -70,7 +67,7 @@ public class AuthenticationController {
 
     /* 토큰 쿠키를 삭제하는 컨트롤러 (로그아웃) */
     @PostMapping("/logout")
-    public ResponseEntity<?> expiredRefreshToken(@AuthenticationPrincipal UserDetails loginUser, HttpServletRequest request, HttpServletResponse response) {
+    public ResponseEntity<?> expiredToken(@AuthenticationPrincipal UserDetails loginUser, HttpServletRequest request, HttpServletResponse response) {
         if(loginUser == null) throw new UnauthorizedException("loginUser cannot be null");
 
         CookieUtils.deleteAll(request, response);

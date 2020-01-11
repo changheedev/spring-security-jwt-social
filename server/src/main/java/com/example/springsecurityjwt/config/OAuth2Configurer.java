@@ -1,9 +1,8 @@
-package com.example.springsecurityjwt.authentication.oauth2;
+package com.example.springsecurityjwt.config;
 
 import com.example.springsecurityjwt.authentication.oauth2.ClientRegistration;
 import com.example.springsecurityjwt.authentication.oauth2.ClientRegistrationRepository;
 import com.example.springsecurityjwt.authentication.oauth2.CustomOAuth2Provider;
-
 import com.example.springsecurityjwt.authentication.oauth2.OAuth2ClientProperties;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;

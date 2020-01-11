@@ -27,15 +27,8 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.print;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-@ExtendWith(SpringExtension.class)
-@SpringBootTest
-@AutoConfigureMockMvc
-public class UsersApiTest {
+public class UsersApiTest extends SpringMvcTestSupport{
 
-    private final Logger log = LoggerFactory.getLogger(UsersApiTest.class);
-
-    @Autowired
-    private MockMvc mockMvc;
     @Autowired
     private UserRepository userRepository;
     @Autowired
@@ -236,7 +229,7 @@ public class UsersApiTest {
     private void requestSignUpApi(SignUpRequest signUpRequest) throws Exception {
         MvcResult mvcResult = mockMvc.perform(post("/users")
                 .contentType(MediaType.APPLICATION_JSON_VALUE)
-                .content(jsonUtils.toJson(signUpRequest)))
+                .content(JsonUtils.toJson(signUpRequest)))
                 .andExpect(status().isOk())
                 .andDo(print())
                 .andReturn();

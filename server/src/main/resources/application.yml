@@ -60,3 +60,6 @@ jwt:
   secretKey: #jwt-secret-key
   signatureAlgorithm: HS256
   tokenExpired: 604800 #(sec) 7 days
+server:
+  servlet:
+    context-path: /api

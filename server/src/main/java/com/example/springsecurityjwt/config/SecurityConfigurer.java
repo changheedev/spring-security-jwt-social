@@ -1,4 +1,4 @@
-package com.example.springsecurityjwt.security.config;
+package com.example.springsecurityjwt.config;
 
 import com.example.springsecurityjwt.jwt.filter.JwtAuthenticationFilter;
 import com.example.springsecurityjwt.security.CustomUserDetailsService;
@@ -13,7 +13,6 @@ import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configuration.WebSecurityConfigurerAdapter;
 import org.springframework.security.config.http.SessionCreationPolicy;
-import org.springframework.security.config.oauth2.client.CommonOAuth2Provider;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.authentication.HttpStatusEntryPoint;
@@ -25,7 +24,6 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 public class SecurityConfigurer extends WebSecurityConfigurerAdapter {
 
     private final CustomUserDetailsService userDetailsService;
-    private final CustomOAuth2UserService oAuth2UserService;
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
 
     /*
@@ -45,6 +43,7 @@ public class SecurityConfigurer extends WebSecurityConfigurerAdapter {
                 .cors()
                 .and()
                 .formLogin().disable()
+                .logout().disable() // '/logout' uri 를 사용하기 위한 설정
                 .httpBasic().disable()
                 .authorizeRequests()
                 .antMatchers("/authorize", "/oauth2/**").permitAll()

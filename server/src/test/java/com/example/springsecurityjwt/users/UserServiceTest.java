@@ -20,9 +20,7 @@ import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-@ExtendWith(SpringExtension.class)
-@SpringBootTest
-public class UserServiceTest {
+public class UserServiceTest extends SpringTestSupport {
 
     @Autowired
     private UserService userService;
