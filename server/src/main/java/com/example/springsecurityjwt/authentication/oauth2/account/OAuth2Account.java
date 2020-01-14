@@ -6,8 +6,11 @@ import lombok.AccessLevel;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import org.springframework.util.Assert;
 
-import javax.persistence.*;
+import javax.persistence.Entity;
+import javax.persistence.OneToOne;
+import javax.persistence.Table;
 import java.time.LocalDateTime;
 
 @Entity
@@ -39,10 +42,12 @@ public class OAuth2Account extends BaseEntity {
     }
 
     public void linkUser(User user) {
+        Assert.state(this.user == null, "소셜 계정에 연동 된 다른 계정이 존재합니다.");
         this.user = user;
     }
 
     public void unlinkUser() {
+        Assert.state(this.user != null, "연동 된 계정이 존재하지 않습니다.");
         this.user = null;
     }
 

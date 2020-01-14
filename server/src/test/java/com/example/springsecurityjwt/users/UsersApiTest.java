@@ -7,7 +7,6 @@ import com.example.springsecurityjwt.authentication.oauth2.account.OAuth2Account
 import com.example.springsecurityjwt.jwt.JwtProvider;
 import com.example.springsecurityjwt.security.AuthorityType;
 import com.example.springsecurityjwt.util.JsonUtils;
-import com.google.gson.reflect.TypeToken;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
@@ -17,7 +16,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import javax.servlet.http.Cookie;
 import java.time.LocalDateTime;
-import java.util.List;
 import java.util.Optional;
 
 import static org.hibernate.validator.internal.util.Contracts.assertNotNull;
@@ -27,7 +25,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.print;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-public class UsersApiTest extends SpringMvcTestSupport{
+public class UsersApiTest extends SpringMvcTestSupport {
 
     @Autowired
     private UserRepository userRepository;
@@ -51,8 +49,32 @@ public class UsersApiTest extends SpringMvcTestSupport{
 
         //then
         Optional<User> user = userRepository.findByUsername(signUpRequest.getEmail());
-        assertTrue(user.isPresent());
+        assertTrue(user.isPresent(), "유저 정보가 정삭적으로 저장되지 않음");
     }
+
+    @Test
+    @Transactional
+    public void 중복된_이메일로_회원가입_요청시_실패_테스트() throws Exception {
+        //given
+        User user = User.builder().name("Changhee").email("test@email.com").username("test@email.com").password(passwordEncoder.encode("password")).type(UserType.DEFAULT).build();
+        userRepository.save(user);
+        SignUpRequest signUpRequest = SignUpRequest.builder().email("test@email.com").name("new User").password("password").build();
+
+        //when
+        MvcResult mvcResult = mockMvc.perform(post("/users")
+                .contentType(MediaType.APPLICATION_JSON_VALUE)
+                .content(JsonUtils.toJson(signUpRequest)))
+                .andExpect(status().isBadRequest())
+                .andDo(print())
+                .andReturn();
+
+        //then
+        String content = mvcResult.getResponse().getContentAsString();
+        CommonExceptionAdvice.ErrorResponse errorResponse = JsonUtils.fromJson(content, CommonExceptionAdvice.ErrorResponse.class);
+        assertEquals(1, errorResponse.getErrors().size(), "이메일 중복 검사가 정상적으로 진행되지 않음");
+        assertEquals("email", errorResponse.getErrors().get(0).getField(), "이메일 중복 검사가 정상적으로 진행되지 않음");
+    }
+
 
     @Test
     @Transactional
@@ -71,12 +93,12 @@ public class UsersApiTest extends SpringMvcTestSupport{
         String content = mvcResult.getResponse().getContentAsString();
 
         //then
-        List<CommonExceptionAdvice.ValidationError> errors = JsonUtils.fromJson(content, new TypeToken<List<CommonExceptionAdvice.ValidationError>>(){}.getType());
-        assertEquals(errors.size(), 3);
+        CommonExceptionAdvice.ErrorResponse errorResponse = JsonUtils.fromJson(content, CommonExceptionAdvice.ErrorResponse.class);
+        assertEquals(3, errorResponse.getErrors().size(), "이메일, 이름, 패스워드의 Null 유효성 검사가 정상적으로 진행되지 않음");
 
-        errors.forEach(error -> {
+        errorResponse.getErrors().forEach(error -> {
             log.debug(error.getField());
-            log.debug(error.getMessage());
+            log.debug(error.getDefaultMessage());
         });
     }
 
@@ -96,12 +118,12 @@ public class UsersApiTest extends SpringMvcTestSupport{
 
         //then
         String content = mvcResult.getResponse().getContentAsString();
-        List<CommonExceptionAdvice.ValidationError> errors = JsonUtils.fromJson(content, new TypeToken<List<CommonExceptionAdvice.ValidationError>>(){}.getType());
-        assertEquals(errors.size(), 2);
+        CommonExceptionAdvice.ErrorResponse errorResponse = JsonUtils.fromJson(content, CommonExceptionAdvice.ErrorResponse.class);
+        assertEquals(2, errorResponse.getErrors().size(), "이메일, 패스워드의 Pattern 유효성 검사가 정상적으로 진행되지 않음");
 
-        errors.forEach(error -> {
+        errorResponse.getErrors().forEach(error -> {
             log.debug(error.getField());
-            log.debug(error.getMessage());
+            log.debug(error.getDefaultMessage());
         });
     }
 
@@ -132,11 +154,11 @@ public class UsersApiTest extends SpringMvcTestSupport{
         String result = mvcResult.getResponse().getContentAsString();
         UserProfileResponse userProfile = JsonUtils.fromJson(result, UserProfileResponse.class);
 
-        assertNotNull(userProfile);
-        assertEquals(userProfile.getName(), user.getName());
-        assertEquals(userProfile.getEmail(), user.getEmail());
-        assertEquals(userProfile.getAuthorities().get(0), AuthorityType.ROLE_MEMBER);
-        assertEquals(userProfile.getSocialProvider(), "google");
+        assertNotNull(userProfile, "유저 프로필 정보를 가져오는데 실패");
+        assertEquals(user.getName(), userProfile.getName(), "프로필의 이름 정보가 유저의 이름과 다름");
+        assertEquals(user.getEmail(), userProfile.getEmail(), "프로필의 이메일 정보가 유저의 이메일과 다름");
+        assertEquals(AuthorityType.ROLE_MEMBER, userProfile.getAuthorities().get(0), "권한 정보가 저장되지 않음");
+        assertEquals("google", userProfile.getSocialProvider(), "연동된 소셜 계정 정보가 저장되지 않음");
     }
 
     @Test
@@ -166,14 +188,14 @@ public class UsersApiTest extends SpringMvcTestSupport{
                 .andExpect(status().isOk())
                 .andDo(print()).andReturn();
 
-        assertEquals(user.getName(), updateProfileRequest.getName());
-        assertEquals(user.getEmail(), updateProfileRequest.getEmail());
-        assertEquals(user.getUsername(), updateProfileRequest.getEmail());
+        assertEquals(user.getName(), updateProfileRequest.getName(), "이름이 업데이트 되지 않음");
+        assertEquals(user.getEmail(), updateProfileRequest.getEmail(), "이메일이 업데이트 되지 않음");
+        assertEquals(user.getUsername(), updateProfileRequest.getEmail(), "username 이 함께 업데이트 되지 않음");
     }
 
     @Test
     @Transactional
-    public void 프로필_변경_validation_테스트() throws Exception{
+    public void 프로필_변경_validation_테스트() throws Exception {
         User user = User.builder().email("test@email.com").name("Changhee").username("test@email.com").password(passwordEncoder.encode("password")).type(UserType.DEFAULT).build();
         userRepository.save(user);
 
@@ -192,12 +214,12 @@ public class UsersApiTest extends SpringMvcTestSupport{
         String content = mvcResult.getResponse().getContentAsString();
 
         //then
-        List<CommonExceptionAdvice.ValidationError> errors = JsonUtils.fromJson(content, new TypeToken<List<CommonExceptionAdvice.ValidationError>>(){}.getType());
-        assertEquals(errors.size(), 2);
+        CommonExceptionAdvice.ErrorResponse errorResponse = JsonUtils.fromJson(content, CommonExceptionAdvice.ErrorResponse.class);
+        assertEquals(2, errorResponse.getErrors().size(), "이름의 Null 유효성과 이메일 패턴 유효성 검사가 정상적으로 진행되지 않음");
 
-        errors.forEach(error -> {
+        errorResponse.getErrors().forEach(error -> {
             log.debug(error.getField());
-            log.debug(error.getMessage());
+            log.debug(error.getDefaultMessage());
         });
     }
 

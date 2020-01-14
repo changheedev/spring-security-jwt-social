@@ -1,7 +1,7 @@
 package com.example.springsecurityjwt.authentication.oauth2.service;
 
 import com.example.springsecurityjwt.authentication.oauth2.ClientRegistration;
-import com.example.springsecurityjwt.authentication.oauth2.OAuth2ProcessException;
+import com.example.springsecurityjwt.authentication.oauth2.OAuth2RequestFailedException;
 import com.example.springsecurityjwt.authentication.oauth2.OAuth2Token;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
@@ -32,7 +32,7 @@ public class KakaoOAuth2Service extends OAuth2Service{
             entity = restTemplate.exchange(clientRegistration.getProviderDetails().getUnlinkUri(), HttpMethod.POST, httpEntity, String.class);
         } catch (HttpStatusCodeException exception) {
             int statusCode = exception.getStatusCode().value();
-            throw new OAuth2ProcessException(String.format("Unlink failed [%d].", statusCode), exception);
+            throw new OAuth2RequestFailedException(String.format("%s 연동해제 실패. [응답코드 : %d].", clientRegistration.getRegistrationId().toUpperCase(), statusCode), exception);
         }
     }
 }

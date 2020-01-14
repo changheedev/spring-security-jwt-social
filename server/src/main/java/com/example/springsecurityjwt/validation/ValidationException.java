@@ -9,8 +9,17 @@ public class ValidationException extends RuntimeException{
 
     private List<FieldError> errors = new ArrayList<>();
 
-    public ValidationException(List<FieldError> errors) {
-        this.errors = errors;
+    public ValidationException() {
+    }
+
+    public ValidationException(String message, FieldError fieldError) {
+        super(message);
+        this.errors.add(fieldError);
+    }
+
+    public ValidationException(String message, Throwable cause, FieldError fieldError) {
+        super(message, cause);
+        this.errors.add(fieldError);
     }
 
     public ValidationException(String message, List<FieldError> errors) {

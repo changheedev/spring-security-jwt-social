@@ -1,7 +1,5 @@
 package com.example.springsecurityjwt.authentication.oauth2.userInfo;
 
-import com.example.springsecurityjwt.authentication.oauth2.OAuth2ProcessException;
-
 import java.util.Map;
 
 public class OAuth2UserInfoFactory {
@@ -14,7 +12,7 @@ public class OAuth2UserInfoFactory {
         } else if (registrationId.equalsIgnoreCase("naver")) {
             return new NaverOAuth2UserInfo(attributes);
         } else {
-            throw new OAuth2ProcessException(registrationId + " login not supported");
+            throw new IllegalArgumentException(registrationId.toUpperCase() + " 로그인은 지원하지 않습니다.");
         }
     }
 }

@@ -5,7 +5,6 @@ import com.example.springsecurityjwt.advice.CommonExceptionAdvice;
 import com.example.springsecurityjwt.jwt.JwtProvider;
 import com.example.springsecurityjwt.users.SignUpRequest;
 import com.example.springsecurityjwt.util.JsonUtils;
-import com.google.gson.reflect.TypeToken;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
@@ -15,7 +14,6 @@ import org.springframework.web.util.UriComponentsBuilder;
 
 import javax.servlet.http.Cookie;
 import java.nio.charset.StandardCharsets;
-import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -23,7 +21,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.print;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-public class AuthenticationApiTest extends SpringMvcTestSupport{
+public class AuthenticationApiTest extends SpringMvcTestSupport {
 
     @Autowired
     private JwtProvider jwtProvider;
@@ -53,9 +51,9 @@ public class AuthenticationApiTest extends SpringMvcTestSupport{
 
         //then
         Cookie cookie = mvcResult.getResponse().getCookie("access_token");
-        assertNotNull(cookie);
-        assertTrue(cookie.getValue().startsWith("eyJhbGciOiJIUzI1NiJ9"));
-        assertTrue(cookie.isHttpOnly());
+        assertNotNull(cookie, "토큰 쿠키가 생성되지 않음");
+        assertTrue(cookie.getValue().startsWith("eyJhbGciOiJIUzI1NiJ9"), "토큰 정보가 올바르게 생성되지 않음");
+        assertTrue(cookie.isHttpOnly(), "쿠키를 생성할 때 옵션이 적용되지 않음");
     }
 
     @Test
@@ -71,7 +69,7 @@ public class AuthenticationApiTest extends SpringMvcTestSupport{
         MvcResult mvcResult = mockMvc.perform(post("/authorize")
                 .contentType(MediaType.APPLICATION_JSON_VALUE)
                 .content(JsonUtils.toJson(authorizationRequest)))
-                .andExpect(status().isBadRequest())
+                .andExpect(status().isUnauthorized())
                 .andDo(print()).andReturn();
     }
 
@@ -93,12 +91,12 @@ public class AuthenticationApiTest extends SpringMvcTestSupport{
 
         //then
         String content = mvcResult.getResponse().getContentAsString();
-        List<CommonExceptionAdvice.ValidationError> errors = JsonUtils.fromJson(content, new TypeToken<List<CommonExceptionAdvice.ValidationError>>(){}.getType());
-        assertEquals(errors.size(), 1);
-        errors.forEach(error -> {
-            assertEquals(error.getField(), "password");
+        CommonExceptionAdvice.ErrorResponse errorResponse = JsonUtils.fromJson(content, CommonExceptionAdvice.ErrorResponse.class);
+        assertEquals(1, errorResponse.getErrors().size(), "Password Null 유효성 검사가 정상적으로 진행되지 않음");
+        errorResponse.getErrors().forEach(error -> {
+            assertEquals("password", error.getField(), "Password Null 유효성 검사가 정상적으로 진행되지 않음");
             log.debug(error.getField());
-            log.debug(error.getMessage());
+            log.debug(error.getDefaultMessage());
         });
 
     }
@@ -119,7 +117,7 @@ public class AuthenticationApiTest extends SpringMvcTestSupport{
                 .andExpect(status().isOk())
                 .andDo(print()).andReturn();
 
-        assertEquals(mvcResult.getResponse().getCookie("access_token").getValue(), "");
+        assertEquals("", mvcResult.getResponse().getCookie("access_token").getValue(), "토큰 정보가 삭제되지 않음");
     }
 
     @Test
@@ -145,9 +143,8 @@ public class AuthenticationApiTest extends SpringMvcTestSupport{
                 .andDo(print()).andReturn();
 
         //then
-        //소셜 서비스에서 제공하는 인증 페이지로 리디렉션 된다.
         String redirectUri = mvcResult.getResponse().getRedirectedUrl();
-        assertTrue(redirectUri.contains(GOOGLE_AUTHORIZATION_URI));
+        assertTrue(redirectUri.contains(GOOGLE_AUTHORIZATION_URI), "구글 로그인 페이지로 리디렉션 되지 않음");
     }
 
     @Test
@@ -165,9 +162,8 @@ public class AuthenticationApiTest extends SpringMvcTestSupport{
                 .andDo(print()).andReturn();
 
         //then
-        //소셜 서비스에서 제공하는 인증 페이지로 리디렉션 된다.
         String redirectUri = mvcResult.getResponse().getRedirectedUrl();
-        assertTrue(redirectUri.contains(NAVER_AUTHORIZATION_URI));
+        assertTrue(redirectUri.contains(NAVER_AUTHORIZATION_URI), "네이버 로그인 페이지로 리디렉션 되지 않음");
     }
 
     @Test
@@ -185,9 +181,8 @@ public class AuthenticationApiTest extends SpringMvcTestSupport{
                 .andDo(print()).andReturn();
 
         //then
-        //소셜 서비스에서 제공하는 인증 페이지로 리디렉션 된다.
         String redirectUri = mvcResult.getResponse().getRedirectedUrl();
-        assertTrue(redirectUri.contains(KAKAO_AUTHORIZATION_URI));
+        assertTrue(redirectUri.contains(KAKAO_AUTHORIZATION_URI), "카카오 로그인 페이지로 리디렉션 되지 않음");
     }
 
     private SignUpRequest registerTestUser(String email, String name, String password) throws Exception {

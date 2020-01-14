@@ -8,10 +8,8 @@ import com.example.springsecurityjwt.authentication.oauth2.userInfo.OAuth2UserIn
 import com.example.springsecurityjwt.jwt.JwtProvider;
 import com.example.springsecurityjwt.security.CustomUserDetails;
 import com.example.springsecurityjwt.users.UserService;
-import com.example.springsecurityjwt.users.UserType;
 import com.example.springsecurityjwt.util.CookieUtils;
 import com.example.springsecurityjwt.validation.ValidationException;
-
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.env.Environment;
@@ -35,7 +33,6 @@ import java.math.BigInteger;
 import java.net.URLEncoder;
 import java.security.SecureRandom;
 import java.util.Arrays;
-import java.util.Optional;
 
 @RestController
 @Slf4j
@@ -53,23 +50,19 @@ public class AuthenticationController {
     /* 사용자의 계정을 인증하고 로그인 토큰을 발급해주는 컨트롤러 */
     @PostMapping("/authorize")
     public void authenticateUsernamePassword(@Valid @RequestBody AuthorizationRequest authorizationRequest, BindingResult bindingResult, HttpServletRequest request, HttpServletResponse response) throws IOException {
-
-        if(bindingResult.hasErrors()) throw new ValidationException("Validation error", bindingResult.getFieldErrors());
-
+        if(bindingResult.hasErrors()) throw new ValidationException("로그인 유효성 검사 실패.", bindingResult.getFieldErrors());
         try {
             Authentication authentication = authenticationManager.authenticate(new UsernamePasswordAuthenticationToken(authorizationRequest.getUsername(), authorizationRequest.getPassword()));
             UserDetails userDetails = (UserDetails) authentication.getPrincipal();
             createTokenCookie(userDetails, response);
         } catch (AuthenticationException e) {
-            throw new AuthenticationProcessException("Username or password is wrong");
+            throw new AuthenticationFailedException("아이디 또는 패스워드가 틀렸습니다.");
         }
     }
 
     /* 토큰 쿠키를 삭제하는 컨트롤러 (로그아웃) */
     @PostMapping("/logout")
-    public ResponseEntity<?> expiredToken(@AuthenticationPrincipal UserDetails loginUser, HttpServletRequest request, HttpServletResponse response) {
-        if(loginUser == null) throw new UnauthorizedException("loginUser cannot be null");
-
+    public ResponseEntity<?> expiredToken(HttpServletRequest request, HttpServletResponse response) {
         CookieUtils.deleteAll(request, response);
         return ResponseEntity.ok("success");
     }
@@ -77,7 +70,6 @@ public class AuthenticationController {
     /* 사용자의 소셜 로그인 요청을 받아 각 소셜 서비스로 인증을 요청하는 컨트롤러 */
     @GetMapping("/oauth2/authorize/{provider}")
     public void redirectSocialAuthorizationPage(@PathVariable String provider, @RequestParam(name = "redirect_uri") String redirectUri, @RequestParam String callback, HttpServletRequest request, HttpServletResponse response) throws Exception {
-
         String state = generateState();
 
         // 콜백에서 사용할 요청 정보를 저장
@@ -121,11 +113,10 @@ public class AuthenticationController {
                 redirectWithErrorMessage(oAuth2AuthorizationRequest.getReferer(), "unauthorized", response);
                 return;
             }
-
             try {
                 userService.linkOAuth2Account(loginUser.getUsername(), provider, oAuth2Token, oAuth2UserInfo);
-            } catch (OAuth2ProcessException e) {
-                redirectWithErrorMessage(oAuth2AuthorizationRequest.getReferer(), "already_linked", response);
+            } catch (Exception e) {
+                redirectWithErrorMessage(oAuth2AuthorizationRequest.getReferer(), e.getMessage(), response);
                 return;
             }
         }
@@ -134,27 +125,15 @@ public class AuthenticationController {
         response.sendRedirect(oAuth2AuthorizationRequest.getRedirectUri());
     }
 
-    @PostMapping("/oauth2/unlink/{provider}")
-    public void unlinkOAuth2Account(@PathVariable String provider, @AuthenticationPrincipal CustomUserDetails loginUser) {
+    @PostMapping("/oauth2/unlink")
+    public void unlinkOAuth2Account(@AuthenticationPrincipal CustomUserDetails loginUser) {
 
-        //로그인 상태가 아니면
-        if(loginUser == null) throw new UnauthorizedException("loginUser cannot be null");
-
-        //소셜 계정으로 생성된 계정이면 연동 해제 방지
-        if (loginUser.getType().equals(UserType.OAUTH))
-            throw new OAuth2ProcessException("This account created by social");
-
-        //연동된 소셜계정 정보가 있는지 검사
-        Optional<OAuth2AccountDTO> optionalOAuth2AccountDTO = userService.getOAuth2Account(loginUser.getUsername());
-        if(!optionalOAuth2AccountDTO.isPresent()) throw new OAuth2ProcessException("연동된 계정 정보가 없습니다.");
+        OAuth2AccountDTO oAuth2AccountDTO = userService.unlinkOAuth2Account(loginUser.getUsername());
 
         //OAuth 인증 서버에 연동해제 요청
-        OAuth2AccountDTO oAuth2AccountDTO = optionalOAuth2AccountDTO.get();
         ClientRegistration clientRegistration = clientRegistrationRepository.findByRegistrationId(oAuth2AccountDTO.getProvider());
         OAuth2Service oAuth2Service = OAuth2ServiceFactory.getOAuth2Service(restTemplate, oAuth2AccountDTO.getProvider());
         oAuth2Service.unlink(clientRegistration, oAuth2AccountDTO.getOAuth2Token());
-        
-        userService.unlinkOAuth2Account(loginUser.getUsername());
     }
 
     private void createTokenCookie(UserDetails userDetails, HttpServletResponse response) throws IOException {

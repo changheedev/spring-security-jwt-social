@@ -10,15 +10,15 @@ import java.util.Optional;
 public interface UserService {
     void signUpService(SignUpRequest signUpRequest);
 
-    Optional<OAuth2AccountDTO> getOAuth2Account(String username);
-
     void updateProfile(String username, UpdateProfileRequest updateProfileRequest);
 
     UserDetails loginOAuth2User(String provider, OAuth2Token oAuth2Token, OAuth2UserInfo userInfo);
 
-    UserDetails linkOAuth2Account(String targetUsername, String provider, OAuth2Token oAuth2Token, OAuth2UserInfo userInfo);
+    Optional<OAuth2AccountDTO> getOAuth2Account(String username);
 
-    void unlinkOAuth2Account(String username);
+    UserDetails linkOAuth2Account(String username, String provider, OAuth2Token oAuth2Token, OAuth2UserInfo userInfo);
 
-    void withdrawUser(String username);
+    OAuth2AccountDTO unlinkOAuth2Account(String username);
+
+    Optional<OAuth2AccountDTO> withdrawUser(String username);
 }
