@@ -19,8 +19,7 @@ import java.time.LocalDateTime;
 import java.util.Optional;
 
 import static org.hibernate.validator.internal.util.Contracts.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.print;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -126,6 +125,30 @@ public class UsersApiTest extends SpringMvcTestSupport {
             log.debug(error.getDefaultMessage());
         });
     }
+
+    @Test
+    @Transactional
+    public void 회원탈퇴_테스트() throws Exception{
+        //given
+        User user = User.builder().email("test@email.com").name("Changhee").username("test@email.com").password(passwordEncoder.encode("password")).type(UserType.DEFAULT).build();
+        userRepository.save(user);
+
+        String token = jwtProvider.generateToken(user.getUsername());
+        Cookie cookie = new Cookie("access_token", token);
+        cookie.setMaxAge(60 * 3);
+        cookie.setHttpOnly(true);
+        cookie.setPath("/");
+
+        //when
+        MvcResult mvcResult = mockMvc.perform(delete("/users/withdraw")
+                .cookie(cookie))
+                .andExpect(status().isOk())
+                .andDo(print()).andReturn();
+
+        //then
+        assertFalse(userRepository.existsByUsername("test@email.com"), "회원 탈퇴 후 회원 정보가 삭제되지 않음");
+    }
+
 
     @Test
     @Transactional
