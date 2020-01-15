@@ -8,7 +8,9 @@
         :id="`button-${item.provider}`"
         :class="`button-${item.provider}`"
         @click.prevent="handleSocialLogin(item)"
-      ></b-button>
+        block
+        >{{ item.name }} 아이디로 로그인</b-button
+      >
     </div>
     <div class="or-separator">
       <div class="or-text">OR</div>
@@ -86,17 +88,25 @@ export default {
 <style lang="scss" scoped>
 .container-login {
   max-width: 400px;
-  margin: 3rem auto;
+  margin: 1rem auto;
   padding: 50px;
   text-align: center;
+
+  @media (max-width: 400px) {
+    padding: 20px;
+  }
 }
 
 .container-social-button {
   button {
-    display: block;
-    width: 300px;
+    margin: 0 auto;
+    padding: 8px;
     height: 50px;
     border: none;
+    font-size: 15px;
+    background-size: 24px !important;
+    background-repeat: no-repeat !important;
+    background-position: 15px 12px !important;
   }
 
   button + button {
@@ -104,15 +114,26 @@ export default {
   }
 
   .button-google {
-    background: url("/social/google.png") no-repeat;
+    background: #fff;
+    background-image: url("/social/google.png");
+    color: rgba(0, 0, 0, 0.54);
+    border-radius: 0.25rem;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.27);
+    font-family: "Roboto", sans-serif;
+    font-weight: bold;
   }
-
   .button-naver {
-    background: url("/social/naver.png") no-repeat;
+    background: #1ec800;
+    background-image: url("/social/naver.png");
+    color: #fff;
+    font-family: "Nanum Barun Gothic", sans-serif;
+    font-weight: 700;
   }
-
   .button-kakao {
-    background: url("/social/kakao.png") no-repeat;
+    background: #f4e016;
+    background-image: url("/social/kakao.png");
+    color: #2d1617;
+    font-weight: 600;
   }
 }
 

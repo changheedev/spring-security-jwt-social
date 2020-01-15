@@ -13,7 +13,20 @@ module.exports = {
         content: "spring-security-jwt-oauth2 client"
       }
     ],
-    link: [{ rel: "icon", type: "image/x-icon", href: "/favicon.ico" }]
+    link: [
+      { rel: "icon", type: "image/x-icon", href: "/favicon.ico" },
+      {
+        rel: "stylesheet",
+        type: "text/css",
+        href:
+          "//cdn.jsdelivr.net/font-nanum/1.0/nanumbarungothic/nanumbarungothic.css"
+      },
+      {
+        rel: "stylesheet",
+        type: "text/css",
+        href: "https://fonts.googleapis.com/css?family=Roboto:700&display=swap"
+      }
+    ]
   },
   /*
    ** Customize the progress bar color
