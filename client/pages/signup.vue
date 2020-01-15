@@ -36,6 +36,7 @@
 
 <script>
 export default {
+  middleware: ["anonymous"],
   data() {
     return {
       signupRequest: {
