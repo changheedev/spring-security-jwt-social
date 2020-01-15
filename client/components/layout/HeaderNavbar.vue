@@ -27,8 +27,11 @@ export default {
   }),
   methods: {
     logout() {
-      this.$axios.post("/api/authorize/logout").then(() => {
-        this.$store.commit("clearLoggedName");
+      this.$axios({
+        method: process.env.apis.auth.logout.method,
+        url: process.env.apis.auth.logout.uri
+      }).then(() => {
+        this.$store.commit("clearUser");
         this.$router.push("/login");
       });
     }

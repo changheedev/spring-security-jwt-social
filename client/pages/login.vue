@@ -1,9 +1,9 @@
 <template>
-  <div class="container-login">
+  <div class="container-login shadow rounded">
     <H1 class="login-title">Spring Social</H1>
     <div class="container-social-button">
       <b-button
-        v-for="item in social"
+        v-for="item in socials"
         :key="`button-${item.provider}`"
         :id="`button-${item.provider}`"
         :class="`button-${item.provider}`"
@@ -46,11 +46,9 @@
 </template>
 
 <script>
-import { GOOGLE_AUTH_URL, NAVER_AUTH_URL, KAKAO_AUTH_URL } from "~/constants";
-
 export default {
   asyncData({ query }) {
-    let redirectUri = "http://localhost:3000";
+    let redirectUri = process.env.baseUrl;
 
     if (query.redirect_uri) redirectUri = redirectUri + query.redirect_uri;
 
@@ -61,20 +59,7 @@ export default {
   middleware: ["anonymous"],
   data() {
     return {
-      social: [
-        {
-          provider: "google",
-          authUrl: GOOGLE_AUTH_URL
-        },
-        {
-          provider: "naver",
-          authUrl: NAVER_AUTH_URL
-        },
-        {
-          provider: "kakao",
-          authUrl: KAKAO_AUTH_URL
-        }
-      ],
+      socials: process.env.apis.auth.social.list,
       authenticationRequest: {
         username: "",
         password: ""
@@ -83,11 +68,13 @@ export default {
   },
   methods: {
     handleSubmit() {
-      this.$axios
-        .$post("/api/authorize", this.authenticationRequest)
-        .then(response => {
-          this.$router.push(this.redirectUri);
-        });
+      this.$axios({
+        method: process.env.apis.auth.login.method,
+        url: process.env.apis.auth.login.uri,
+        data: this.authenticationRequest
+      }).then(response => {
+        window.location = this.redirectUri;
+      });
     },
     handleSocialLogin(value) {
       window.location = `${value.authUrl}?redirect_uri=${this.redirectUri}&callback=login`;
@@ -101,8 +88,6 @@ export default {
   max-width: 400px;
   margin: 3rem auto;
   padding: 50px;
-  border-radius: 0.25rem;
-  box-shadow: 0 1px 11px rgba(0, 0, 0, 0.27);
   text-align: center;
 }
 

@@ -65,7 +65,7 @@
         <b-row no-gutters>
           <b-col cols="4" sm="3">제공자</b-col>
           <b-col cols="8" sm="9">
-            {{ social[profile.socialProvider].name }}
+            {{ socials[profile.socialProvider].name }}
           </b-col>
         </b-row>
         <b-row no-gutters>
@@ -79,7 +79,7 @@
         </b-row>
       </div>
       <b-row
-        v-for="item in social"
+        v-for="item in socials"
         :key="`social_${item.provider}`"
         no-gutters
         v-else
@@ -107,7 +107,6 @@
 </template>
 
 <script>
-import { GOOGLE_AUTH_URL, NAVER_AUTH_URL, KAKAO_AUTH_URL } from "~/constants";
 export default {
   middleware: ["authenticated"],
   async asyncData({ app, store, route }) {
@@ -119,23 +118,7 @@ export default {
   },
   data() {
     return {
-      social: {
-        google: {
-          provider: "google",
-          name: "구글",
-          authUrl: GOOGLE_AUTH_URL
-        },
-        naver: {
-          provider: "naver",
-          name: "네이버",
-          authUrl: NAVER_AUTH_URL
-        },
-        kakao: {
-          provider: "kakao",
-          name: "카카오",
-          authUrl: KAKAO_AUTH_URL
-        }
-      },
+      socials: process.env.apis.auth.social.list,
       editableProfile: false,
       newProfile: {
         name: {
@@ -189,8 +172,10 @@ export default {
       window.location = `${value.authUrl}?redirect_uri=${this.redirectUri}&callback=link`;
     },
     unlinkSocialAccount() {
-      this.$axios
-        .post("/api/oauth2/unlink")
+      this.$axios({
+        method: process.env.apis.auth.social.unlink.method,
+        url: process.env.apis.auth.social.unlink.uri
+      })
         .then(res => {
           alert("연동 해제 되었습니다.");
           location.reload();
@@ -207,11 +192,14 @@ export default {
       }
     },
     updateProfile() {
-      this.$axios
-        .put("/api/users/me", {
+      this.$axios({
+        method: process.env.apis.users.updateProfile.method,
+        url: process.env.apis.users.updateProfile.uri,
+        data: {
           name: this.newProfile.name.value,
           email: this.newProfile.email.value
-        })
+        }
+      })
         .then(res => {
           alert("프로필이 변경되었습니다.");
           location.reload();
@@ -231,8 +219,10 @@ export default {
     withdraw() {
       const withdrawConfirm = confirm("회원탈퇴를 진행하시겠습니까?");
       if (!withdrawConfirm) return;
-      this.$axios
-        .delete("/api/users/withdraw")
+      this.$axios({
+        method: process.env.apis.users.withdraw.method,
+        url: process.env.apis.users.withdraw.uri
+      })
         .then(res => (window.location = "/"))
         .catch(err => {
           alert("회원탈퇴 과정에서 오류가 발생했습니다.");

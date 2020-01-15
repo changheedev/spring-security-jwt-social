@@ -47,10 +47,18 @@ export default {
   },
   methods: {
     handleSubmit() {
-      this.$axios.$post("/api/users", this.signupRequest).then(() => {
-        alert("회원가입 성공!!");
-        this.$router.push("/");
-      });
+      this.$axios({
+        method: process.env.apis.users.signup.method,
+        url: process.env.apis.users.signup.uri,
+        data: this.signupRequest
+      })
+        .then(() => {
+          alert("회원가입이 완료되었습니다.");
+          this.$router.push("/login");
+        })
+        .catch(() => {
+          alert("회원가입 과정에서 오류가 발생했습니다.");
+        });
     }
   }
 };
@@ -64,11 +72,6 @@ export default {
   border-radius: 0.25rem;
   box-shadow: 0 1px 11px rgba(0, 0, 0, 0.27);
   text-align: center;
-
-  h1 {
-    font-size: 2rem;
-    margin-bottom: 2rem;
-  }
 
   button {
     height: 50px;
