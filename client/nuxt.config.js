@@ -52,10 +52,14 @@ module.exports = {
     "@nuxtjs/axios",
     "cookie-universal-nuxt",
     // With options
-    ["cookie-universal-nuxt", { alias: "cookiz" }]
+    ["cookie-universal-nuxt", { alias: "cookiz" }],
+    "@nuxtjs/moment"
   ],
   axios: {
     baseURL: process.env.API_BASE_URL || "http://localhost:8080",
     credentials: true
+  },
+  moment: {
+    timezone: true
   }
 };
