@@ -63,7 +63,7 @@ public class AuthenticationController {
     /* 토큰 쿠키를 삭제하는 컨트롤러 (로그아웃) */
     @PostMapping("/logout")
     public ResponseEntity<?> expiredToken(HttpServletRequest request, HttpServletResponse response) {
-        CookieUtils.deleteAll(request, response);
+        CookieUtils.deleteCookie(request, response, "access_token");
         return ResponseEntity.ok("success");
     }
 
@@ -144,7 +144,6 @@ public class AuthenticationController {
             secure = true;
 
         CookieUtils.addCookie(response, "access_token", jwtProvider.generateToken(userDetails.getUsername()), true, secure, cookieMaxAge);
-        CookieUtils.addCookie(response, "logged_name", URLEncoder.encode(((CustomUserDetails) userDetails).getName(), "utf-8"), true, secure, cookieMaxAge);
     }
 
     private void redirectWithErrorMessage(String uri, String message, HttpServletResponse response) throws IOException {
