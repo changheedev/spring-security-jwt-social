@@ -1,20 +1,6 @@
 <template>
-  <div class="container-login shadow rounded">
-    <H1 class="login-title">Spring Social</H1>
-    <div class="container-social-button">
-      <b-button
-        v-for="item in socials"
-        :key="`button-${item.provider}`"
-        :id="`button-${item.provider}`"
-        :class="`button-${item.provider}`"
-        @click.prevent="handleSocialLogin(item)"
-        block
-        >{{ item.name }} 아이디로 로그인</b-button
-      >
-    </div>
-    <div class="or-separator">
-      <div class="or-text">OR</div>
-    </div>
+  <div class="container-login">
+    <social-login :redirectUri="redirectUri"></social-login>
     <div class="container-login-default">
       <b-form @submit.prevent="handleSubmit()">
         <b-form-group>
@@ -48,12 +34,13 @@
 </template>
 
 <script>
+import SocialLogin from "~/components/SocialLogin";
 export default {
+  layout: "non-header",
+  components: { SocialLogin },
   asyncData({ query }) {
     let redirectUri = process.env.baseUrl;
-
     if (query.redirect_uri) redirectUri = redirectUri + query.redirect_uri;
-
     return {
       redirectUri: redirectUri
     };
@@ -61,7 +48,6 @@ export default {
   middleware: ["anonymous"],
   data() {
     return {
-      socials: process.env.apis.auth.social.list,
       authenticationRequest: {
         username: "",
         password: ""
@@ -77,9 +63,6 @@ export default {
       }).then(response => {
         window.location = this.redirectUri;
       });
-    },
-    handleSocialLogin(value) {
-      window.location = `${value.authUrl}?redirect_uri=${this.redirectUri}&callback=login`;
     }
   }
 };
@@ -88,9 +71,8 @@ export default {
 <style lang="scss" scoped>
 .container-login {
   max-width: 400px;
-  margin: 1rem auto;
-  padding: 50px;
-  text-align: center;
+  margin: 0 auto;
+  padding: 0 20px;
 
   @media (max-width: 400px) {
     padding: 20px;
@@ -164,5 +146,6 @@ export default {
 
 .container-signup-link {
   margin-top: 2rem;
+  text-align: center;
 }
 </style>
