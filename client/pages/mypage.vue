@@ -14,6 +14,8 @@
               :value="newProfile.name.value"
               :state="newProfile.name.state"
               @input="value => updateNameVal(value)"
+              trim
+              required
             ></b-form-input>
             <b-form-invalid-feedback id="input-name-feedback">{{
               newProfile.name.feedback
@@ -33,6 +35,8 @@
               :value="newProfile.email.value"
               :state="newProfile.email.state"
               @input="value => updateEmailVal(value)"
+              trim
+              required
             ></b-form-input>
             <b-form-invalid-feedback id="input-email-feedback">{{
               newProfile.email.feedback
@@ -63,13 +67,13 @@
       <h2>소셜 로그인 관리</h2>
       <div v-if="profile.socialProvider">
         <b-row no-gutters>
-          <b-col cols="4" sm="3">제공자</b-col>
+          <b-col cols="4" sm="3">서비스명</b-col>
           <b-col cols="8" sm="9">
             {{ socials[profile.socialProvider].name }}
           </b-col>
         </b-row>
         <b-row no-gutters>
-          <b-col cols="4" sm="3">연동 일자</b-col>
+          <b-col cols="4" sm="3">연동일자</b-col>
           <b-col cols="8" sm="9">
             {{ transDateTime }}
           </b-col>
@@ -206,13 +210,10 @@ export default {
         })
         .catch(err => {
           if (err.response.data.errors.length > 0) {
-            console.log(err.response);
             err.response.data.errors.forEach(error => {
               this.newProfile[error.field].state = false;
               this.newProfile[error.field].feedback = error.defaultMessage;
             });
-
-            console.log(this.newProfile);
           } else alert("프로필을 업데이트 하는 과정에서 오류가 발생했습니다.");
         });
     },
@@ -235,8 +236,8 @@ export default {
 <style lang="scss" scoped>
 .container-mypage {
   max-width: 700px;
-  margin: 1rem auto;
-  padding: 15px;
+  margin: 0 auto;
+  padding: 50px 15px 100px;
 }
 .area-profile {
   margin-bottom: 3rem;
