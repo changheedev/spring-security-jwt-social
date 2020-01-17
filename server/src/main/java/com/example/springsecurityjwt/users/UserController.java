@@ -75,6 +75,6 @@ public class UserController {
             OAuth2Service oAuth2Service = OAuth2ServiceFactory.getOAuth2Service(restTemplate, oAuth2AccountDTO.getProvider());
             oAuth2Service.unlink(clientRegistration, oAuth2AccountDTO.getOAuth2Token());
         }
-        CookieUtils.deleteAll(request, response);
+        CookieUtils.deleteCookie(request, response, "access_token");
     }
 }

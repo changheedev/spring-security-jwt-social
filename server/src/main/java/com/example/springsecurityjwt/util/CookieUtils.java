@@ -47,16 +47,4 @@ public class CookieUtils {
             }
         }
     }
-
-    public static void deleteAll(HttpServletRequest request, HttpServletResponse response) {
-        Cookie[] cookies = request.getCookies();
-        if (cookies != null && cookies.length > 0) {
-            for (Cookie cookie : cookies) {
-                cookie.setValue("");
-                cookie.setPath("/");
-                cookie.setMaxAge(0);
-                response.addCookie(cookie);
-            }
-        }
-    }
 }

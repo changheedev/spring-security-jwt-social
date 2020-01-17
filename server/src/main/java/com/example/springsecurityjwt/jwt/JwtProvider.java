@@ -4,6 +4,7 @@ package com.example.springsecurityjwt.jwt;
 import com.example.springsecurityjwt.util.DateConvertor;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
 import java.time.LocalDateTime;
@@ -12,13 +13,10 @@ import java.util.Map;
 import java.util.function.Function;
 
 @Component
+@RequiredArgsConstructor
 public class JwtProvider {
 
     private final JwtProperties jwtProperties;
-
-    public JwtProvider(JwtProperties jwtProperties) {
-        this.jwtProperties = jwtProperties;
-    }
 
     public String extractUsername(String token) {
         return extractClaim(token, Claims::getSubject);
