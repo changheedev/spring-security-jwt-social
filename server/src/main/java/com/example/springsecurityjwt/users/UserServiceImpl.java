@@ -17,6 +17,7 @@ import org.springframework.util.Assert;
 import java.util.Optional;
 
 @Service
+@Transactional
 @RequiredArgsConstructor
 public class UserServiceImpl implements UserService {
 
@@ -39,6 +40,7 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public Optional<OAuth2AccountDTO> getOAuth2Account(String username) {
         Optional<User> optionalUser = userRepository.findByUsername(username);
         if (!optionalUser.isPresent() || optionalUser.get().getSocial() == null) return Optional.empty();
@@ -46,7 +48,6 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
-    @Transactional
     public void updateProfile(String username, UpdateProfileRequest updateProfileRequest){
 
         User user = userRepository.findByUsername(username).get();
@@ -64,7 +65,6 @@ public class UserServiceImpl implements UserService {
 
 
     @Override
-    @Transactional
     public UserDetails loginOAuth2User(String provider, OAuth2Token oAuth2Token, OAuth2UserInfo userInfo) {
 
         Optional<OAuth2Account> optOAuth2Account = oAuth2AccountRepository.findByProviderAndProviderId(provider, userInfo.getId());
@@ -126,7 +126,6 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
-    @Transactional
     public UserDetails linkOAuth2Account(String username, String provider, OAuth2Token oAuth2Token, OAuth2UserInfo userInfo) {
         User user = checkRegisteredUser(username);
 
@@ -153,7 +152,6 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
-    @Transactional
     public OAuth2AccountDTO unlinkOAuth2Account(String username) {
         User user = checkRegisteredUser(username);
 
@@ -167,7 +165,6 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
-    @Transactional
     public Optional<OAuth2AccountDTO> withdrawUser(String username) {
         OAuth2AccountDTO oAuth2AccountDTO = null;
         User user = checkRegisteredUser(username);

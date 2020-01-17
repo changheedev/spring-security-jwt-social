@@ -19,6 +19,7 @@ import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+@Transactional
 public class UserServiceTest extends SpringTestSupport {
 
     @Autowired
@@ -31,7 +32,6 @@ public class UserServiceTest extends SpringTestSupport {
     private PasswordEncoder passwordEncoder;
 
     @Test
-    @Transactional
     public void 회원가입서비스_테스트() {
         //given
         SignUpRequest signUpRequest = SignUpRequest.builder()
@@ -53,7 +53,6 @@ public class UserServiceTest extends SpringTestSupport {
     }
 
     @Test
-    @Transactional
     public void 중복된_이메일로_변경을_시도했을때_DuplicatedUsernameException_Throw_테스트() {
 
         User user1 = User.builder().name("유저1").email("test@email.com").username("test@email.com").password(passwordEncoder.encode("password")).type(UserType.DEFAULT).build();
@@ -69,7 +68,6 @@ public class UserServiceTest extends SpringTestSupport {
     }
 
     @Test
-    @Transactional
     public void 일반_계정의_이메일_변경_시_username이_함께_변경되는지_테스트() {
 
         User user = User.builder().name("유저").email("test@email.com").username("test@email.com").password(passwordEncoder.encode("password")).type(UserType.DEFAULT).build();
@@ -84,7 +82,6 @@ public class UserServiceTest extends SpringTestSupport {
     }
 
     @Test
-    @Transactional
     public void 소셜_계정의_이메일_변경_시_username이_변경되지_않는지_테스트() {
 
         User user = User.builder().name("유저").email("test@email.com").username("test@email.com").password(passwordEncoder.encode("password")).type(UserType.OAUTH).build();
@@ -99,7 +96,6 @@ public class UserServiceTest extends SpringTestSupport {
     }
 
     @Test
-    @Transactional
     public void 중복된_이메일이_존재할_경우_계정_연동_테스트() {
         //given
         User user = User.builder()
@@ -133,7 +129,6 @@ public class UserServiceTest extends SpringTestSupport {
     }
 
     @Test
-    @Transactional
     public void 소셜계정의_이메일이_중복되지_않는_경우_새로운_계정이_생성되는지_테스트() {
         //given
         User user = User.builder()
@@ -168,7 +163,6 @@ public class UserServiceTest extends SpringTestSupport {
     }
 
     @Test
-    @Transactional
     public void 이메일_정보가_없을_때_소셜_로그인_테스트() {
 
         Map<String, Object> attributes = new HashMap<>();
@@ -187,7 +181,6 @@ public class UserServiceTest extends SpringTestSupport {
     }
 
     @Test
-    @Transactional
     public void 연동해제_테스트() {
         //given
         User user = User.builder()
@@ -211,7 +204,6 @@ public class UserServiceTest extends SpringTestSupport {
     }
 
     @Test
-    @Transactional
     public void Account_Type_이_OAUTH_인_경우_연동해제_실패_테스트() {
         //given
         User user = User.builder()
@@ -233,7 +225,6 @@ public class UserServiceTest extends SpringTestSupport {
     }
 
     @Test
-    @Transactional
     public void 회원_탈퇴_시_소셜_계정도_함께_삭제되는지_검사() {
         //given
         User user = User.builder()

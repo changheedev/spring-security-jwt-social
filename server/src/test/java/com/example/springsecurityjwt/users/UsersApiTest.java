@@ -24,6 +24,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.print;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+@Transactional
 public class UsersApiTest extends SpringMvcTestSupport {
 
     @Autowired
@@ -36,7 +37,6 @@ public class UsersApiTest extends SpringMvcTestSupport {
     private PasswordEncoder passwordEncoder;
 
     @Test
-    @Transactional
     public void 회원가입_API_테스트() throws Exception {
         //given
         String email = "test@email.com";
@@ -52,7 +52,6 @@ public class UsersApiTest extends SpringMvcTestSupport {
     }
 
     @Test
-    @Transactional
     public void 중복된_이메일로_회원가입_요청시_실패_테스트() throws Exception {
         //given
         User user = User.builder().name("Changhee").email("test@email.com").username("test@email.com").password(passwordEncoder.encode("password")).type(UserType.DEFAULT).build();
@@ -76,7 +75,6 @@ public class UsersApiTest extends SpringMvcTestSupport {
 
 
     @Test
-    @Transactional
     public void 회원가입_Null_Valid_테스트() throws Exception {
 
         //given
@@ -102,7 +100,6 @@ public class UsersApiTest extends SpringMvcTestSupport {
     }
 
     @Test
-    @Transactional
     public void 회원가입_Pattern_Valid_테스트() throws Exception {
         //given
         SignUpRequest signUpRequest = SignUpRequest.builder().email("aaa").name("Changhee").password("aaaa").build();
@@ -127,7 +124,6 @@ public class UsersApiTest extends SpringMvcTestSupport {
     }
 
     @Test
-    @Transactional
     public void 회원탈퇴_테스트() throws Exception{
         //given
         User user = User.builder().email("test@email.com").name("Changhee").username("test@email.com").password(passwordEncoder.encode("password")).type(UserType.DEFAULT).build();
@@ -151,7 +147,6 @@ public class UsersApiTest extends SpringMvcTestSupport {
 
 
     @Test
-    @Transactional
     public void 로그인_유저_프로필_가져오기_테스트() throws Exception {
 
         //given
@@ -185,7 +180,6 @@ public class UsersApiTest extends SpringMvcTestSupport {
     }
 
     @Test
-    @Transactional
     public void 인증_토큰이_없을때_프로필_요청실패_테스트() throws Exception {
 
         MvcResult mvcResult = mockMvc.perform(get("/users/me"))
@@ -194,7 +188,6 @@ public class UsersApiTest extends SpringMvcTestSupport {
     }
 
     @Test
-    @Transactional
     public void 프로필_변경_테스트() throws Exception {
         User user = User.builder().email("test@email.com").name("Changhee").username("test@email.com").password(passwordEncoder.encode("password")).type(UserType.DEFAULT).build();
         userRepository.save(user);
@@ -217,7 +210,6 @@ public class UsersApiTest extends SpringMvcTestSupport {
     }
 
     @Test
-    @Transactional
     public void 프로필_변경_validation_테스트() throws Exception {
         User user = User.builder().email("test@email.com").name("Changhee").username("test@email.com").password(passwordEncoder.encode("password")).type(UserType.DEFAULT).build();
         userRepository.save(user);
@@ -247,7 +239,6 @@ public class UsersApiTest extends SpringMvcTestSupport {
     }
 
     @Test
-    @Transactional
     public void 인증_토큰이_없을때_프로필_변경요청_실패_테스트() throws Exception {
         User user = User.builder().email("test@email.com").name("Changhee").username("test@email.com").password(passwordEncoder.encode("password")).type(UserType.DEFAULT).build();
         userRepository.save(user);

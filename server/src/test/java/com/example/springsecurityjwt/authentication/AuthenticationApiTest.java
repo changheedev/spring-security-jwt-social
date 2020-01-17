@@ -21,6 +21,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.print;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+@Transactional
 public class AuthenticationApiTest extends SpringMvcTestSupport {
 
     @Autowired
@@ -32,7 +33,6 @@ public class AuthenticationApiTest extends SpringMvcTestSupport {
     private final String REDIRECT_URI = "http://localhost:3000";
 
     @Test
-    @Transactional
     public void Cookie_AccessToken_발급_테스트() throws Exception {
 
         //given
@@ -102,7 +102,6 @@ public class AuthenticationApiTest extends SpringMvcTestSupport {
     }
 
     @Test
-    @Transactional
     public void 로그아웃_테스트() throws Exception {
 
         SignUpRequest signUpRequest = registerTestUser("test@email.com", "ChangHee", "password");
