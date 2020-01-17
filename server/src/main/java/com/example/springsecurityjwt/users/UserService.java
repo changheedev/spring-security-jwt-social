@@ -8,7 +8,7 @@ import org.springframework.security.core.userdetails.UserDetails;
 import java.util.Optional;
 
 public interface UserService {
-    void signUpService(SignUpRequest signUpRequest);
+    void saveUser(SignUpRequest signUpRequest);
 
     void updateProfile(String username, UpdateProfileRequest updateProfileRequest);
 

@@ -41,7 +41,7 @@ public class UserServiceTest extends SpringTestSupport {
                 .build();
 
         //when
-        userService.signUpService(signUpRequest);
+        userService.saveUser(signUpRequest);
 
         //then
         Optional<User> optUser = userRepository.findByUsername(signUpRequest.getEmail());

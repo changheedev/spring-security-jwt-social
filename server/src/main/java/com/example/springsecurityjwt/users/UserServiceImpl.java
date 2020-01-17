@@ -26,7 +26,7 @@ public class UserServiceImpl implements UserService {
     private final PasswordEncoder passwordEncoder;
 
     @Override
-    public void signUpService(SignUpRequest signUpRequest){
+    public void saveUser(SignUpRequest signUpRequest){
         checkDuplicateEmail(signUpRequest.getEmail());
         User user = User.builder()
                 .username(signUpRequest.getEmail())
