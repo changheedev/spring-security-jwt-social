@@ -1,7 +1,7 @@
 package com.example.springsecurityjwt.config;
 
 import com.example.springsecurityjwt.jwt.filter.JwtAuthenticationFilter;
-import com.example.springsecurityjwt.security.CustomUserDetailsService;
+import com.example.springsecurityjwt.security.UserDetailsServiceImpl;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -23,7 +23,7 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 @RequiredArgsConstructor
 public class SecurityConfigurer extends WebSecurityConfigurerAdapter {
 
-    private final CustomUserDetailsService userDetailsService;
+    private final UserDetailsServiceImpl userDetailsService;
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
 
     /*
@@ -46,9 +46,10 @@ public class SecurityConfigurer extends WebSecurityConfigurerAdapter {
                 .logout().disable() // '/logout' uri 를 사용하기 위한 설정
                 .httpBasic().disable()
                 .authorizeRequests()
-                .antMatchers("/authorize", "/oauth2/**").permitAll()
-                .antMatchers(HttpMethod.POST, "/users").permitAll()
                 .antMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+                .antMatchers(HttpMethod.POST, "/authorize", "/users").anonymous()
+                .antMatchers( HttpMethod.POST, "/oauth2/unlink").authenticated()
+                .antMatchers( "/oauth2/**").permitAll()
                 .anyRequest().authenticated().and()
                 .exceptionHandling()
                 .authenticationEntryPoint(new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED));

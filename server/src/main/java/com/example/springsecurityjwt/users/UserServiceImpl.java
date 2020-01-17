@@ -5,7 +5,7 @@ import com.example.springsecurityjwt.authentication.oauth2.account.OAuth2Account
 import com.example.springsecurityjwt.authentication.oauth2.account.OAuth2AccountDTO;
 import com.example.springsecurityjwt.authentication.oauth2.account.OAuth2AccountRepository;
 import com.example.springsecurityjwt.authentication.oauth2.userInfo.OAuth2UserInfo;
-import com.example.springsecurityjwt.security.CustomUserDetails;
+import com.example.springsecurityjwt.security.UserDetailsImpl;
 import com.example.springsecurityjwt.validation.SimpleFieldError;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -116,7 +116,7 @@ public class UserServiceImpl implements UserService {
             user.linkSocial(newAccount);
         }
 
-        return CustomUserDetails.builder()
+        return UserDetailsImpl.builder()
                 .id(user.getId())
                 .username(user.getUsername())
                 .name(user.getName())
@@ -142,7 +142,7 @@ public class UserServiceImpl implements UserService {
         //연관관계 설정
         user.linkSocial(oAuth2Account);
 
-        return CustomUserDetails.builder()
+        return UserDetailsImpl.builder()
                 .id(user.getId())
                 .username(user.getUsername())
                 .name(user.getName())

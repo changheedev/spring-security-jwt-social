@@ -6,7 +6,7 @@ import com.example.springsecurityjwt.authentication.oauth2.service.OAuth2Service
 import com.example.springsecurityjwt.authentication.oauth2.service.OAuth2ServiceFactory;
 import com.example.springsecurityjwt.authentication.oauth2.userInfo.OAuth2UserInfo;
 import com.example.springsecurityjwt.jwt.JwtProvider;
-import com.example.springsecurityjwt.security.CustomUserDetails;
+import com.example.springsecurityjwt.security.UserDetailsImpl;
 import com.example.springsecurityjwt.users.UserService;
 import com.example.springsecurityjwt.util.CookieUtils;
 import com.example.springsecurityjwt.validation.ValidationException;
@@ -30,7 +30,6 @@ import javax.servlet.http.HttpServletResponse;
 import javax.validation.Valid;
 import java.io.IOException;
 import java.math.BigInteger;
-import java.net.URLEncoder;
 import java.security.SecureRandom;
 import java.util.Arrays;
 
@@ -82,7 +81,7 @@ public class AuthenticationController {
 
     /* 각 소셜 서비스로부터 인증 결과를 처리하는 컨트롤러 */
     @RequestMapping("/oauth2/callback/{provider}")
-    public void oAuth2AuthenticationCallback(@PathVariable String provider, OAuth2AuthorizationResponse oAuth2AuthorizationResponse, HttpServletRequest request, HttpServletResponse response, @AuthenticationPrincipal CustomUserDetails loginUser) throws Exception {
+    public void oAuth2AuthenticationCallback(@PathVariable String provider, OAuth2AuthorizationResponse oAuth2AuthorizationResponse, HttpServletRequest request, HttpServletResponse response, @AuthenticationPrincipal UserDetailsImpl loginUser) throws Exception {
 
         //인증을 요청할 때 저장했던 request 정보를 가져온다.
         OAuth2AuthorizationRequest oAuth2AuthorizationRequest = inMemoryOAuth2RequestRepository.deleteOAuth2Request(oAuth2AuthorizationResponse.getState());
@@ -126,7 +125,7 @@ public class AuthenticationController {
     }
 
     @PostMapping("/oauth2/unlink")
-    public void unlinkOAuth2Account(@AuthenticationPrincipal CustomUserDetails loginUser) {
+    public void unlinkOAuth2Account(@AuthenticationPrincipal UserDetailsImpl loginUser) {
 
         OAuth2AccountDTO oAuth2AccountDTO = userService.unlinkOAuth2Account(loginUser.getUsername());
 

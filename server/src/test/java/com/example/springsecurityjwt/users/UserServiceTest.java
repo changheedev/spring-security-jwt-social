@@ -6,7 +6,7 @@ import com.example.springsecurityjwt.authentication.oauth2.account.OAuth2Account
 import com.example.springsecurityjwt.authentication.oauth2.account.OAuth2AccountRepository;
 import com.example.springsecurityjwt.authentication.oauth2.userInfo.OAuth2UserInfo;
 import com.example.springsecurityjwt.authentication.oauth2.userInfo.OAuth2UserInfoFactory;
-import com.example.springsecurityjwt.security.CustomUserDetails;
+import com.example.springsecurityjwt.security.UserDetailsImpl;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -173,7 +173,7 @@ public class UserServiceTest extends SpringTestSupport {
         OAuth2UserInfo oAuth2UserInfo = OAuth2UserInfoFactory.getOAuth2UserInfo("google", attributes);
 
         //when
-        CustomUserDetails userDetails = (CustomUserDetails) userService.loginOAuth2User("google", oAuth2Token, oAuth2UserInfo);
+        UserDetailsImpl userDetails = (UserDetailsImpl) userService.loginOAuth2User("google", oAuth2Token, oAuth2UserInfo);
 
         //then
         assertNull(userDetails.getEmail(), "이메일 정보가 없는 소셜 서비스로 가입한 계정에 이메일 정보가 등록됨");

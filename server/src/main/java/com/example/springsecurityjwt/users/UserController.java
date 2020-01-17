@@ -6,7 +6,7 @@ import com.example.springsecurityjwt.authentication.oauth2.account.OAuth2Account
 import com.example.springsecurityjwt.authentication.oauth2.service.OAuth2Service;
 import com.example.springsecurityjwt.authentication.oauth2.service.OAuth2ServiceFactory;
 import com.example.springsecurityjwt.security.AuthorityType;
-import com.example.springsecurityjwt.security.CustomUserDetails;
+import com.example.springsecurityjwt.security.UserDetailsImpl;
 import com.example.springsecurityjwt.util.CookieUtils;
 import com.example.springsecurityjwt.validation.ValidationException;
 import lombok.RequiredArgsConstructor;
@@ -42,7 +42,7 @@ public class UserController {
     }
 
     @GetMapping("/me")
-    public ResponseEntity<?> getAuthenticatedUserProfile(@AuthenticationPrincipal CustomUserDetails loginUser) {
+    public ResponseEntity<?> getAuthenticatedUserProfile(@AuthenticationPrincipal UserDetailsImpl loginUser) {
         log.debug("request user profile....");
         UserProfileResponse.UserProfileResponseBuilder userProfileResponseBuilder = UserProfileResponse.builder()
                 .id(loginUser.getId())
@@ -60,13 +60,13 @@ public class UserController {
     }
 
     @PutMapping("/me")
-    public void updateProfile(@RequestBody @Valid UpdateProfileRequest updateProfileRequest, BindingResult bindingResult, @AuthenticationPrincipal CustomUserDetails loginUser) {
+    public void updateProfile(@RequestBody @Valid UpdateProfileRequest updateProfileRequest, BindingResult bindingResult, @AuthenticationPrincipal UserDetailsImpl loginUser) {
         if(bindingResult.hasErrors()) throw new ValidationException("프로필 업데이트 유효성 검사 실패", bindingResult.getFieldErrors());
         userService.updateProfile(loginUser.getUsername(), updateProfileRequest);
     }
 
     @DeleteMapping("/withdraw")
-    public void withdrawUser(@AuthenticationPrincipal CustomUserDetails loginUser, HttpServletRequest request, HttpServletResponse response) {
+    public void withdrawUser(@AuthenticationPrincipal UserDetailsImpl loginUser, HttpServletRequest request, HttpServletResponse response) {
         Optional<OAuth2AccountDTO> optionalOAuth2AccountDTO = userService.withdrawUser(loginUser.getUsername());
         //연동된 소셜계정 정보가 있다면 연동해제 요청
         if(optionalOAuth2AccountDTO.isPresent()) {

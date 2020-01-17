@@ -1,8 +1,8 @@
 package com.example.springsecurityjwt.jwt.filter;
 
 import com.example.springsecurityjwt.jwt.JwtProvider;
-import com.example.springsecurityjwt.security.CustomUserDetails;
-import com.example.springsecurityjwt.security.CustomUserDetailsService;
+import com.example.springsecurityjwt.security.UserDetailsImpl;
+import com.example.springsecurityjwt.security.UserDetailsServiceImpl;
 import com.example.springsecurityjwt.util.CookieUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -25,7 +25,7 @@ import java.util.Optional;
 @Slf4j
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
-    private final CustomUserDetailsService userDetailsService;
+    private final UserDetailsServiceImpl userDetailsService;
     private final JwtProvider jwtProvider;
 
     @Override
@@ -44,7 +44,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
          * SecurityContextHolder 내에 authentication 객체(이전에 인증된 정보)가 없는 상태인지를 검사한다.
          */
         if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
-            CustomUserDetails userDetails = (CustomUserDetails) userDetailsService.loadUserByUsername(username);
+            UserDetailsImpl userDetails = (UserDetailsImpl) userDetailsService.loadUserByUsername(username);
 
             //토큰이 유효하다면
             if (jwtProvider.validateToken(jwt, userDetails.getUsername())) {
