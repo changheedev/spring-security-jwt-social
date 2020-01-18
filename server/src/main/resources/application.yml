@@ -54,8 +54,6 @@ spring:
             token-uri: https://kauth.kakao.com/oauth/token
             user-info-uri: https://kapi.kakao.com/v2/user/me
             unlink-uri: https://kapi.kakao.com/v1/user/unlink
-      authorized-redirect-uris:
-        - http://localhost:3000
 jwt:
   secretKey: #jwt-secret-key
   signatureAlgorithm: HS256
@@ -63,3 +61,5 @@ jwt:
 server:
   servlet:
     context-path: /api
+client:
+  origins: http://localhost:3000
