@@ -60,6 +60,8 @@ public class UsersApiTest extends SpringMvcTestSupport {
 
         //when
         MvcResult mvcResult = mockMvc.perform(post("/users")
+                .header("X-CSRF-TOKEN", CSRF_TOKEN)
+                .cookie(new Cookie("CSRF-TOKEN", CSRF_TOKEN))
                 .contentType(MediaType.APPLICATION_JSON_VALUE)
                 .content(JsonUtils.toJson(signUpRequest)))
                 .andExpect(status().isBadRequest())
@@ -82,6 +84,8 @@ public class UsersApiTest extends SpringMvcTestSupport {
 
         //when
         MvcResult mvcResult = mockMvc.perform(post("/users")
+                .header("X-CSRF-TOKEN", CSRF_TOKEN)
+                .cookie(new Cookie("CSRF-TOKEN", CSRF_TOKEN))
                 .contentType(MediaType.APPLICATION_JSON_VALUE)
                 .content(JsonUtils.toJson(signUpRequest)))
                 .andExpect(status().isBadRequest())
@@ -106,6 +110,8 @@ public class UsersApiTest extends SpringMvcTestSupport {
 
         //when
         MvcResult mvcResult = mockMvc.perform(post("/users")
+                .header("X-CSRF-TOKEN", CSRF_TOKEN)
+                .cookie(new Cookie("CSRF-TOKEN", CSRF_TOKEN))
                 .contentType(MediaType.APPLICATION_JSON_VALUE)
                 .content(JsonUtils.toJson(signUpRequest)))
                 .andExpect(status().isBadRequest())
@@ -137,6 +143,8 @@ public class UsersApiTest extends SpringMvcTestSupport {
 
         //when
         MvcResult mvcResult = mockMvc.perform(delete("/users/withdraw")
+                .header("X-CSRF-TOKEN", CSRF_TOKEN)
+                .cookie(new Cookie("CSRF-TOKEN", CSRF_TOKEN))
                 .cookie(cookie))
                 .andExpect(status().isOk())
                 .andDo(print()).andReturn();
@@ -200,6 +208,8 @@ public class UsersApiTest extends SpringMvcTestSupport {
 
         UpdateProfileRequest updateProfileRequest = UpdateProfileRequest.builder().name("Updated name").email("test2@email.com").build();
         MvcResult mvcResult = mockMvc.perform(put("/users/me")
+                .header("X-CSRF-TOKEN", CSRF_TOKEN)
+                .cookie(new Cookie("CSRF-TOKEN", CSRF_TOKEN))
                 .cookie(cookie).contentType(MediaType.APPLICATION_JSON_VALUE).content(JsonUtils.toJson(updateProfileRequest)))
                 .andExpect(status().isOk())
                 .andDo(print()).andReturn();
@@ -222,6 +232,8 @@ public class UsersApiTest extends SpringMvcTestSupport {
 
         UpdateProfileRequest updateProfileRequest = UpdateProfileRequest.builder().name("").email("test2email.com").build();
         MvcResult mvcResult = mockMvc.perform(put("/users/me")
+                .header("X-CSRF-TOKEN", CSRF_TOKEN)
+                .cookie(new Cookie("CSRF-TOKEN", CSRF_TOKEN))
                 .cookie(cookie).contentType(MediaType.APPLICATION_JSON_VALUE).content(JsonUtils.toJson(updateProfileRequest)))
                 .andExpect(status().isBadRequest())
                 .andDo(print()).andReturn();
@@ -245,6 +257,8 @@ public class UsersApiTest extends SpringMvcTestSupport {
 
         UpdateProfileRequest updateProfileRequest = UpdateProfileRequest.builder().name("Updated name").email("test2@email.com").build();
         MvcResult mvcResult = mockMvc.perform(put("/users/me")
+                .header("X-CSRF-TOKEN", CSRF_TOKEN)
+                .cookie(new Cookie("CSRF-TOKEN", CSRF_TOKEN))
                 .contentType(MediaType.APPLICATION_JSON_VALUE).content(JsonUtils.toJson(updateProfileRequest)))
                 .andExpect(status().isUnauthorized())
                 .andDo(print()).andReturn();
@@ -264,6 +278,8 @@ public class UsersApiTest extends SpringMvcTestSupport {
 
     private void requestSignUpApi(SignUpRequest signUpRequest) throws Exception {
         MvcResult mvcResult = mockMvc.perform(post("/users")
+                .header("X-CSRF-TOKEN", CSRF_TOKEN)
+                .cookie(new Cookie("CSRF-TOKEN", CSRF_TOKEN))
                 .contentType(MediaType.APPLICATION_JSON_VALUE)
                 .content(JsonUtils.toJson(signUpRequest)))
                 .andExpect(status().isOk())

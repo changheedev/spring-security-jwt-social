@@ -6,6 +6,7 @@ import com.example.springsecurityjwt.authentication.oauth2.service.OAuth2Service
 import com.example.springsecurityjwt.authentication.oauth2.service.OAuth2ServiceFactory;
 import com.example.springsecurityjwt.authentication.oauth2.userInfo.OAuth2UserInfo;
 import com.example.springsecurityjwt.jwt.JwtProvider;
+import com.example.springsecurityjwt.security.StatelessCSRFFilter;
 import com.example.springsecurityjwt.security.UserDetailsImpl;
 import com.example.springsecurityjwt.users.UserService;
 import com.example.springsecurityjwt.util.CookieUtils;
@@ -32,6 +33,9 @@ import java.io.IOException;
 import java.math.BigInteger;
 import java.security.SecureRandom;
 import java.util.Arrays;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.UUID;
 
 @RestController
 @Slf4j
@@ -46,6 +50,17 @@ public class AuthenticationController {
     private final JwtProvider jwtProvider;
     private final Environment environment;
 
+    @GetMapping("/csrf-token")
+    public ResponseEntity<?> getCsrfToken(HttpServletRequest request, HttpServletResponse response) {
+        String csrfToken = UUID.randomUUID().toString();
+
+        Map<String, String> resMap = new HashMap<>();
+        resMap.put(StatelessCSRFFilter.CSRF_TOKEN, csrfToken);
+
+        generateCSRFTokenCookie(response);
+        return ResponseEntity.ok(resMap);
+    }
+
     /* 사용자의 계정을 인증하고 로그인 토큰을 발급해주는 컨트롤러 */
     @PostMapping("/authorize")
     public void authenticateUsernamePassword(@Valid @RequestBody AuthorizationRequest authorizationRequest, BindingResult bindingResult, HttpServletRequest request, HttpServletResponse response) throws IOException {
@@ -53,7 +68,8 @@ public class AuthenticationController {
         try {
             Authentication authentication = authenticationManager.authenticate(new UsernamePasswordAuthenticationToken(authorizationRequest.getUsername(), authorizationRequest.getPassword()));
             UserDetails userDetails = (UserDetails) authentication.getPrincipal();
-            createTokenCookie(userDetails, response);
+            generateTokenCookie(userDetails, response);
+            generateCSRFTokenCookie(response);
         } catch (AuthenticationException e) {
             throw new AuthenticationFailedException("아이디 또는 패스워드가 틀렸습니다.");
         }
@@ -63,6 +79,7 @@ public class AuthenticationController {
     @PostMapping("/logout")
     public ResponseEntity<?> expiredToken(HttpServletRequest request, HttpServletResponse response) {
         CookieUtils.deleteCookie(request, response, "access_token");
+        CookieUtils.deleteCookie(request, response, StatelessCSRFFilter.CSRF_TOKEN);
         return ResponseEntity.ok("success");
     }
 
@@ -103,7 +120,8 @@ public class AuthenticationController {
         //로그인에 대한 콜백 처리
         if (oAuth2AuthorizationRequest.getCallback().equalsIgnoreCase("login")) {
             UserDetails userDetails = userService.loginOAuth2User(provider, oAuth2Token, oAuth2UserInfo);
-            createTokenCookie(userDetails, response);
+            generateTokenCookie(userDetails, response);
+            generateCSRFTokenCookie(response);
         }
         //계정 연동에 대한 콜백 처리
         else if (oAuth2AuthorizationRequest.getCallback().equalsIgnoreCase("link")) {
@@ -135,7 +153,7 @@ public class AuthenticationController {
         oAuth2Service.unlink(clientRegistration, oAuth2AccountDTO.getOAuth2Token());
     }
 
-    private void createTokenCookie(UserDetails userDetails, HttpServletResponse response) throws IOException {
+    private void generateTokenCookie(UserDetails userDetails, HttpServletResponse response) {
         final int cookieMaxAge = jwtProvider.getTokenExpirationDate().intValue();
         boolean secure = false;
         //운영 환경인 경우 secure 옵션사용
@@ -144,6 +162,17 @@ public class AuthenticationController {
 
         CookieUtils.addCookie(response, "access_token", jwtProvider.generateToken(userDetails.getUsername()), true, secure, cookieMaxAge);
     }
+
+    private void generateCSRFTokenCookie(HttpServletResponse response) {
+        final int cookieMaxAge = jwtProvider.getTokenExpirationDate().intValue();
+        boolean secure = false;
+        //운영 환경인 경우 secure 옵션사용
+        if (Arrays.stream(environment.getActiveProfiles()).anyMatch(profile -> profile.equalsIgnoreCase("prod")))
+            secure = true;
+
+        CookieUtils.addCookie(response, StatelessCSRFFilter.CSRF_TOKEN, UUID.randomUUID().toString(), true, secure, cookieMaxAge);
+    }
+
 
     private void redirectWithErrorMessage(String uri, String message, HttpServletResponse response) throws IOException {
         String redirectUri = UriComponentsBuilder.fromUriString(uri)

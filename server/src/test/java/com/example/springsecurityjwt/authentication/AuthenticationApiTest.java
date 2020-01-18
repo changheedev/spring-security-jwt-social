@@ -41,9 +41,10 @@ public class AuthenticationApiTest extends SpringMvcTestSupport {
                 .username(signUpRequest.getEmail())
                 .password(signUpRequest.getPassword())
                 .build();
-
         //when
         MvcResult mvcResult = mockMvc.perform(post("/authorize")
+                .header("X-CSRF-TOKEN", CSRF_TOKEN)
+                .cookie(new Cookie("CSRF-TOKEN", CSRF_TOKEN))
                 .contentType(MediaType.APPLICATION_JSON_VALUE)
                 .content(JsonUtils.toJson(authorizationRequest)))
                 .andExpect(status().isOk())
@@ -67,6 +68,8 @@ public class AuthenticationApiTest extends SpringMvcTestSupport {
 
         //when
         MvcResult mvcResult = mockMvc.perform(post("/authorize")
+                .header("X-CSRF-TOKEN", CSRF_TOKEN)
+                .cookie(new Cookie("CSRF-TOKEN", CSRF_TOKEN))
                 .contentType(MediaType.APPLICATION_JSON_VALUE)
                 .content(JsonUtils.toJson(authorizationRequest)))
                 .andExpect(status().isUnauthorized())
@@ -84,6 +87,8 @@ public class AuthenticationApiTest extends SpringMvcTestSupport {
 
         //when
         MvcResult mvcResult = mockMvc.perform(post("/authorize")
+                .header("X-CSRF-TOKEN", CSRF_TOKEN)
+                .cookie(new Cookie("CSRF-TOKEN", CSRF_TOKEN))
                 .contentType(MediaType.APPLICATION_JSON_VALUE)
                 .content(JsonUtils.toJson(authorizationRequest)))
                 .andExpect(status().isBadRequest())
@@ -106,13 +111,11 @@ public class AuthenticationApiTest extends SpringMvcTestSupport {
 
         SignUpRequest signUpRequest = registerTestUser("test@email.com", "ChangHee", "password");
         String token = jwtProvider.generateToken(signUpRequest.getEmail());
-        Cookie cookie = new Cookie("access_token", token);
-        cookie.setMaxAge(60 * 3);
-        cookie.setHttpOnly(true);
-        cookie.setPath("/");
 
         MvcResult mvcResult = mockMvc.perform(post("/logout")
-                .cookie(cookie))
+                .header("X-CSRF-TOKEN", CSRF_TOKEN)
+                .cookie(new Cookie("CSRF-TOKEN", CSRF_TOKEN))
+                .cookie(new Cookie("access_token", token)))
                 .andExpect(status().isOk())
                 .andDo(print()).andReturn();
 
@@ -122,7 +125,9 @@ public class AuthenticationApiTest extends SpringMvcTestSupport {
     @Test
     public void 인증_토큰이_없을때_로그아웃_요청_실패_테스트() throws Exception {
 
-        MvcResult mvcResult = mockMvc.perform(post("/logout"))
+        MvcResult mvcResult = mockMvc.perform(post("/logout")
+                .header("X-CSRF-TOKEN", CSRF_TOKEN)
+                .cookie(new Cookie("CSRF-TOKEN", CSRF_TOKEN)))
                 .andExpect(status().isUnauthorized())
                 .andDo(print()).andReturn();
     }
@@ -198,6 +203,8 @@ public class AuthenticationApiTest extends SpringMvcTestSupport {
 
     private void requestSignUpApi(SignUpRequest signUpRequest) throws Exception {
         MvcResult mvcResult = mockMvc.perform(post("/users")
+                .header("X-CSRF-TOKEN", CSRF_TOKEN)
+                .cookie(new Cookie("CSRF-TOKEN", CSRF_TOKEN))
                 .contentType(MediaType.APPLICATION_JSON_VALUE)
                 .content(JsonUtils.toJson(signUpRequest)))
                 .andExpect(status().isOk())
