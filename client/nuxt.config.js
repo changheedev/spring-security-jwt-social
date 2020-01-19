@@ -42,6 +42,10 @@ module.exports = {
     apis: {
       baseUrl: process.env.API_BASE_URL || "http://localhost:8080",
       auth: {
+        csrf: {
+          uri: "/api/csrf-token",
+          method: "get"
+        },
         login: {
           uri: "/api/authorize",
           method: "post"
@@ -118,7 +122,9 @@ module.exports = {
       }
     }
   },
-
+  router: {
+    middleware: "csrf"
+  },
   modules: [
     "bootstrap-vue/nuxt",
     "@nuxtjs/axios",
@@ -127,6 +133,7 @@ module.exports = {
     ["cookie-universal-nuxt", { alias: "cookiz" }],
     "@nuxtjs/moment"
   ],
+  plugins: ["~/plugins/axios"],
   axios: {
     baseURL: process.env.API_BASE_URL || "http://localhost:8080",
     credentials: true
