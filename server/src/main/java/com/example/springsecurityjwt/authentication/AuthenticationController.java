@@ -64,7 +64,7 @@ public class AuthenticationController {
     /* 사용자의 계정을 인증하고 로그인 토큰을 발급해주는 컨트롤러 */
     @PostMapping("/authorize")
     public void authenticateUsernamePassword(@Valid @RequestBody AuthorizationRequest authorizationRequest, BindingResult bindingResult, HttpServletRequest request, HttpServletResponse response) throws IOException {
-        if(bindingResult.hasErrors()) throw new ValidationException("로그인 유효성 검사 실패.", bindingResult.getFieldErrors());
+        if (bindingResult.hasErrors()) throw new ValidationException("로그인 유효성 검사 실패.", bindingResult.getFieldErrors());
         try {
             Authentication authentication = authenticationManager.authenticate(new UsernamePasswordAuthenticationToken(authorizationRequest.getUsername(), authorizationRequest.getPassword()));
             UserDetails userDetails = (UserDetails) authentication.getPrincipal();
@@ -164,13 +164,7 @@ public class AuthenticationController {
     }
 
     private void generateCSRFTokenCookie(HttpServletResponse response) {
-        final int cookieMaxAge = jwtProvider.getTokenExpirationDate().intValue();
-        boolean secure = false;
-        //운영 환경인 경우 secure 옵션사용
-        if (Arrays.stream(environment.getActiveProfiles()).anyMatch(profile -> profile.equalsIgnoreCase("prod")))
-            secure = true;
-
-        CookieUtils.addCookie(response, StatelessCSRFFilter.CSRF_TOKEN, UUID.randomUUID().toString(), true, secure, cookieMaxAge);
+        CookieUtils.addCookie(response, StatelessCSRFFilter.CSRF_TOKEN, UUID.randomUUID().toString(), 60 * 60 * 24);
     }
 
 

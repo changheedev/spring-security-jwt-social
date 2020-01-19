@@ -6,14 +6,17 @@ import com.example.springsecurityjwt.users.User;
 import com.example.springsecurityjwt.users.UserRepository;
 import com.example.springsecurityjwt.users.UserType;
 import com.example.springsecurityjwt.util.JsonUtils;
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.transaction.annotation.Transactional;
 
 import javax.servlet.http.Cookie;
 
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.print;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -50,5 +53,13 @@ public class SecurityTest extends SpringMvcTestSupport {
                 .contentType(MediaType.APPLICATION_JSON_VALUE)
                 .content(JsonUtils.toJson(new AuthorizationRequest("test@email.com", "password"))))
                 .andExpect(status().isForbidden()).andDo(print());
+    }
+
+    @Test
+    public void CSRF_토큰_요청_테스트() throws Exception {
+        MvcResult mvcResult = mockMvc.perform(get("/csrf-token")).andExpect(status().isOk()).andDo(print()).andReturn();
+
+        Cookie cookie = mvcResult.getResponse().getCookie(StatelessCSRFFilter.CSRF_TOKEN);
+        Assertions.assertNotNull(cookie);
     }
 }

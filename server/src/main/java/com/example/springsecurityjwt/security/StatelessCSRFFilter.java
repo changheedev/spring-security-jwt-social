@@ -6,6 +6,7 @@ import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.web.access.AccessDeniedHandler;
 import org.springframework.security.web.access.AccessDeniedHandlerImpl;
 import org.springframework.security.web.util.matcher.RequestMatcher;
+import org.springframework.util.Assert;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import javax.servlet.FilterChain;
@@ -30,17 +31,15 @@ public class StatelessCSRFFilter extends OncePerRequestFilter {
                                     HttpServletResponse response, FilterChain filterChain)
             throws ServletException, IOException {
 
-        log.debug(request.getHeader("Origin"));
-
         //csrf 보호가 필요한 method 인지 확인
         if (requireCsrfProtectionMatcher.matches(request)) {
-            final String csrfTokenValue = request.getHeader(X_CSRF_TOKEN);
-            Optional<Cookie> optCookie = CookieUtils.getCookie(request, CSRF_TOKEN);
+            Optional<String> optCsrfToken = Optional.ofNullable(request.getHeader(X_CSRF_TOKEN));
+            Optional<Cookie> optCsrfCookie = CookieUtils.getCookie(request, CSRF_TOKEN);
 
-            log.debug("csrfTokenValue : {}", csrfTokenValue);
-            optCookie.ifPresent(cookie -> log.debug("csrfCookieValue : {}", cookie.getValue()));
+            log.debug(optCsrfToken.isPresent() ? optCsrfToken.get() : "CSRF 토큰 헤더가 존재하지 않습니다.");
+            log.debug(optCsrfCookie.isPresent() ? optCsrfCookie.get().getValue() : "CSRF 쿠키가 존재하지 않습니다.");
 
-            if (!optCookie.isPresent() || !csrfTokenValue.equals(optCookie.get().getValue())) {
+            if (!optCsrfCookie.isPresent() || !optCsrfToken.isPresent() || !optCsrfToken.get().equals(optCsrfCookie.get().getValue())) {
                 accessDeniedHandler.handle(request, response, new AccessDeniedException(
                         "CSRF 토큰이 유효하지 않습니다."));
                 return;

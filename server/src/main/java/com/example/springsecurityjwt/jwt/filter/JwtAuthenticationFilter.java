@@ -30,14 +30,16 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain) throws ServletException, IOException {
+
         String username = null;
         String jwt = null;
 
-        //쿠키 또는 헤더에서 access token 을 참조
-        jwt = Optional.ofNullable(getTokenFromCookie(request)).orElse(getTokenFromHeader(request));
+        Optional<Cookie> jwtCookie = CookieUtils.getCookie(request, "access_token");
 
-        if(jwt != null)
+        if(jwtCookie.isPresent()){
+            jwt = jwtCookie.get().getValue();
             username = jwtProvider.extractUsername(jwt);
+        }
 
         /**
          * 토큰에서 username 을 정상적으로 추출할 수 있고
@@ -56,20 +58,5 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             }
         }
         filterChain.doFilter(request, response);
-    }
-
-    private String getTokenFromCookie(HttpServletRequest request) {
-        Optional<Cookie> cookie = CookieUtils.getCookie(request, "access_token");
-        if (cookie.isPresent()) return cookie.get().getValue();
-        return null;
-    }
-
-    private String getTokenFromHeader(HttpServletRequest request) {
-        final String authorizationHeader = request.getHeader("Authorization");
-        if (authorizationHeader != null && authorizationHeader.startsWith("Bearer ")) {
-            String token = authorizationHeader.substring(7);
-            return token;
-        }
-        return null;
     }
 }

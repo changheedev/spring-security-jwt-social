@@ -41,12 +41,13 @@ public class SecurityConfigurer extends WebSecurityConfigurerAdapter {
     protected void configure(HttpSecurity http) throws Exception {
         http.sessionManagement().sessionCreationPolicy(SessionCreationPolicy.STATELESS).and() //세션 사용 x
                 .csrf().disable()
-                .cors().and()
+                .cors().disable()
                 .formLogin().disable()
                 .logout().disable() // '/logout' uri 를 사용하기 위한 설정
                 .httpBasic().disable()
                 .authorizeRequests()
                 .antMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+                .antMatchers("/csrf-token").permitAll()
                 .antMatchers(HttpMethod.POST, "/authorize", "/users").anonymous()
                 .antMatchers(HttpMethod.POST, "/oauth2/unlink").authenticated()
                 .antMatchers("/oauth2/**").permitAll()
