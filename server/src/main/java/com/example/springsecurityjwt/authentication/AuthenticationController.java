@@ -13,7 +13,6 @@ import com.example.springsecurityjwt.util.CookieUtils;
 import com.example.springsecurityjwt.validation.ValidationException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.core.env.Environment;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -32,7 +31,6 @@ import javax.validation.Valid;
 import java.io.IOException;
 import java.math.BigInteger;
 import java.security.SecureRandom;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
@@ -48,7 +46,6 @@ public class AuthenticationController {
     private final InMemoryOAuth2RequestRepository inMemoryOAuth2RequestRepository;
     private final RestTemplate restTemplate;
     private final JwtProvider jwtProvider;
-    private final Environment environment;
 
     @GetMapping("/csrf-token")
     public ResponseEntity<?> getCsrfToken(HttpServletRequest request, HttpServletResponse response) {
@@ -68,7 +65,7 @@ public class AuthenticationController {
         try {
             Authentication authentication = authenticationManager.authenticate(new UsernamePasswordAuthenticationToken(authorizationRequest.getUsername(), authorizationRequest.getPassword()));
             UserDetails userDetails = (UserDetails) authentication.getPrincipal();
-            generateTokenCookie(userDetails, response);
+            generateTokenCookie(userDetails, request, response);
             generateCSRFTokenCookie(response);
         } catch (AuthenticationException e) {
             throw new AuthenticationFailedException("아이디 또는 패스워드가 틀렸습니다.");
@@ -120,7 +117,7 @@ public class AuthenticationController {
         //로그인에 대한 콜백 처리
         if (oAuth2AuthorizationRequest.getCallback().equalsIgnoreCase("login")) {
             UserDetails userDetails = userService.loginOAuth2User(provider, oAuth2Token, oAuth2UserInfo);
-            generateTokenCookie(userDetails, response);
+            generateTokenCookie(userDetails, request, response);
             generateCSRFTokenCookie(response);
         }
         //계정 연동에 대한 콜백 처리
@@ -153,13 +150,10 @@ public class AuthenticationController {
         oAuth2Service.unlink(clientRegistration, oAuth2AccountDTO.getOAuth2Token());
     }
 
-    private void generateTokenCookie(UserDetails userDetails, HttpServletResponse response) {
+    private void generateTokenCookie(UserDetails userDetails, HttpServletRequest request, HttpServletResponse response) {
         final int cookieMaxAge = jwtProvider.getTokenExpirationDate().intValue();
-        boolean secure = false;
-        //운영 환경인 경우 secure 옵션사용
-        if (Arrays.stream(environment.getActiveProfiles()).anyMatch(profile -> profile.equalsIgnoreCase("prod")))
-            secure = true;
-
+        //https 프로토콜인 경우 secure 옵션사용
+        boolean secure = request.isSecure();
         CookieUtils.addCookie(response, "access_token", jwtProvider.generateToken(userDetails.getUsername()), true, secure, cookieMaxAge);
     }
 
