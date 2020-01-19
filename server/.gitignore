@@ -33,3 +33,6 @@ out/
 
 ### User ###
 /config/application.yml
+
+### Docker ###
+.env

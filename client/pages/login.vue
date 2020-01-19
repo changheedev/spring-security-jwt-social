@@ -1,18 +1,6 @@
 <template>
   <div class="container-login">
-    <H1 class="login-title">Spring Social</H1>
-    <div class="container-social-button">
-      <b-button
-        v-for="item in social"
-        :key="`button-${item.provider}`"
-        :id="`button-${item.provider}`"
-        :class="`button-${item.provider}`"
-        @click.prevent="handleSocialLogin(item)"
-      ></b-button>
-    </div>
-    <div class="or-separator">
-      <div class="or-text">OR</div>
-    </div>
+    <social-login :redirectUri="redirectUri"></social-login>
     <div class="container-login-default">
       <b-form @submit.prevent="handleSubmit()">
         <b-form-group>
@@ -46,14 +34,13 @@
 </template>
 
 <script>
-import { GOOGLE_AUTH_URL, NAVER_AUTH_URL, KAKAO_AUTH_URL } from "~/constants";
-
+import SocialLogin from "~/components/SocialLogin";
 export default {
+  layout: "non-header",
+  components: { SocialLogin },
   asyncData({ query }) {
-    let redirectUri = "http://localhost:3000";
-
+    let redirectUri = process.env.baseUrl;
     if (query.redirect_uri) redirectUri = redirectUri + query.redirect_uri;
-
     return {
       redirectUri: redirectUri
     };
@@ -61,20 +48,6 @@ export default {
   middleware: ["anonymous"],
   data() {
     return {
-      social: [
-        {
-          provider: "google",
-          authUrl: GOOGLE_AUTH_URL
-        },
-        {
-          provider: "naver",
-          authUrl: NAVER_AUTH_URL
-        },
-        {
-          provider: "kakao",
-          authUrl: KAKAO_AUTH_URL
-        }
-      ],
       authenticationRequest: {
         username: "",
         password: ""
@@ -83,14 +56,13 @@ export default {
   },
   methods: {
     handleSubmit() {
-      this.$axios
-        .$post("/api/authorize", this.authenticationRequest)
-        .then(response => {
-          this.$router.push(this.redirectUri);
-        });
-    },
-    handleSocialLogin(value) {
-      window.location = `${value.authUrl}?redirect_uri=${this.redirectUri}&callback=login`;
+      this.$axios({
+        method: process.env.apis.auth.login.method,
+        url: process.env.apis.auth.login.uri,
+        data: this.authenticationRequest
+      }).then(response => {
+        window.location = this.redirectUri;
+      });
     }
   }
 };
@@ -99,19 +71,24 @@ export default {
 <style lang="scss" scoped>
 .container-login {
   max-width: 400px;
-  margin: 3rem auto;
-  padding: 50px;
-  border-radius: 0.25rem;
-  box-shadow: 0 1px 11px rgba(0, 0, 0, 0.27);
-  text-align: center;
+  margin: 0 auto;
+  padding: 0 20px;
+
+  @media (max-width: 400px) {
+    padding: 20px;
+  }
 }
 
 .container-social-button {
   button {
-    display: block;
-    width: 300px;
+    margin: 0 auto;
+    padding: 8px;
     height: 50px;
     border: none;
+    font-size: 15px;
+    background-size: 24px !important;
+    background-repeat: no-repeat !important;
+    background-position: 15px 12px !important;
   }
 
   button + button {
@@ -119,15 +96,26 @@ export default {
   }
 
   .button-google {
-    background: url("/social/google.png") no-repeat;
+    background: #fff;
+    background-image: url("/social/google.png");
+    color: rgba(0, 0, 0, 0.54);
+    border-radius: 0.25rem;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.27);
+    font-family: "Roboto", sans-serif;
+    font-weight: bold;
   }
-
   .button-naver {
-    background: url("/social/naver.png") no-repeat;
+    background: #1ec800;
+    background-image: url("/social/naver.png");
+    color: #fff;
+    font-family: "Nanum Barun Gothic", sans-serif;
+    font-weight: 700;
   }
-
   .button-kakao {
-    background: url("/social/kakao.png") no-repeat;
+    background: #f4e016;
+    background-image: url("/social/kakao.png");
+    color: #2d1617;
+    font-weight: 600;
   }
 }
 
@@ -158,5 +146,6 @@ export default {
 
 .container-signup-link {
   margin-top: 2rem;
+  text-align: center;
 }
 </style>

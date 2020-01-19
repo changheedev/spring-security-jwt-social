@@ -1,13 +1,12 @@
 package com.example.springsecurityjwt.users;
 
-import com.example.springsecurityjwt.authentication.UnauthorizedException;
 import com.example.springsecurityjwt.authentication.oauth2.ClientRegistration;
 import com.example.springsecurityjwt.authentication.oauth2.ClientRegistrationRepository;
 import com.example.springsecurityjwt.authentication.oauth2.account.OAuth2AccountDTO;
 import com.example.springsecurityjwt.authentication.oauth2.service.OAuth2Service;
 import com.example.springsecurityjwt.authentication.oauth2.service.OAuth2ServiceFactory;
 import com.example.springsecurityjwt.security.AuthorityType;
-import com.example.springsecurityjwt.security.CustomUserDetails;
+import com.example.springsecurityjwt.security.UserDetailsImpl;
 import com.example.springsecurityjwt.util.CookieUtils;
 import com.example.springsecurityjwt.validation.ValidationException;
 import lombok.RequiredArgsConstructor;
@@ -36,17 +35,15 @@ public class UserController {
     private final ClientRegistrationRepository clientRegistrationRepository;
 
     @PostMapping("")
-    public ResponseEntity<?> signUpNewUser(@RequestBody @Valid SignUpRequest signUpRequest, BindingResult bindingResult) throws Exception {
-
-        if(bindingResult.hasErrors()) throw new ValidationException("validation error", bindingResult.getFieldErrors());
-        userService.signUpService(signUpRequest);
+    public ResponseEntity<?> signUpNewUser(@RequestBody @Valid SignUpRequest signUpRequest, BindingResult bindingResult){
+        if(bindingResult.hasErrors()) throw new ValidationException("회원가입 유효성 검사 실패.", bindingResult.getFieldErrors());
+        userService.saveUser(signUpRequest);
         return ResponseEntity.ok("Success");
     }
 
     @GetMapping("/me")
-    public ResponseEntity<?> getAuthenticatedUserProfile(@AuthenticationPrincipal CustomUserDetails loginUser) {
+    public ResponseEntity<?> getAuthenticatedUserProfile(@AuthenticationPrincipal UserDetailsImpl loginUser) {
         log.debug("request user profile....");
-        if(loginUser == null) throw new UnauthorizedException("loginUser cannot be null");
         UserProfileResponse.UserProfileResponseBuilder userProfileResponseBuilder = UserProfileResponse.builder()
                 .id(loginUser.getId())
                 .name(loginUser.getName())
@@ -63,26 +60,21 @@ public class UserController {
     }
 
     @PutMapping("/me")
-    public void updateProfile(@RequestBody @Valid UpdateProfileRequest updateProfileRequest, BindingResult bindingResult, @AuthenticationPrincipal CustomUserDetails loginUser) {
-
-        if(bindingResult.hasErrors()) throw new ValidationException("Validation error", bindingResult.getFieldErrors());
+    public void updateProfile(@RequestBody @Valid UpdateProfileRequest updateProfileRequest, BindingResult bindingResult, @AuthenticationPrincipal UserDetailsImpl loginUser) {
+        if(bindingResult.hasErrors()) throw new ValidationException("프로필 업데이트 유효성 검사 실패", bindingResult.getFieldErrors());
         userService.updateProfile(loginUser.getUsername(), updateProfileRequest);
     }
 
     @DeleteMapping("/withdraw")
-    public void withdrawUser(@AuthenticationPrincipal CustomUserDetails loginUser, HttpServletRequest request, HttpServletResponse response) {
-        if(loginUser == null) throw new UnauthorizedException("loginUser cannot be null");
-
+    public void withdrawUser(@AuthenticationPrincipal UserDetailsImpl loginUser, HttpServletRequest request, HttpServletResponse response) {
+        Optional<OAuth2AccountDTO> optionalOAuth2AccountDTO = userService.withdrawUser(loginUser.getUsername());
         //연동된 소셜계정 정보가 있다면 연동해제 요청
-        Optional<OAuth2AccountDTO> optionalOAuth2AccountDTO = userService.getOAuth2Account(loginUser.getUsername());
         if(optionalOAuth2AccountDTO.isPresent()) {
             OAuth2AccountDTO oAuth2AccountDTO = optionalOAuth2AccountDTO.get();
             ClientRegistration clientRegistration = clientRegistrationRepository.findByRegistrationId(oAuth2AccountDTO.getProvider());
             OAuth2Service oAuth2Service = OAuth2ServiceFactory.getOAuth2Service(restTemplate, oAuth2AccountDTO.getProvider());
             oAuth2Service.unlink(clientRegistration, oAuth2AccountDTO.getOAuth2Token());
         }
-
-        userService.withdrawUser(loginUser.getUsername());
-        CookieUtils.deleteAll(request, response);
+        CookieUtils.deleteCookie(request, response, "access_token");
     }
 }

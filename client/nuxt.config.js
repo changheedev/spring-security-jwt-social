@@ -13,7 +13,20 @@ module.exports = {
         content: "spring-security-jwt-oauth2 client"
       }
     ],
-    link: [{ rel: "icon", type: "image/x-icon", href: "/favicon.ico" }]
+    link: [
+      { rel: "icon", type: "image/x-icon", href: "/favicon.ico" },
+      {
+        rel: "stylesheet",
+        type: "text/css",
+        href:
+          "//cdn.jsdelivr.net/font-nanum/1.0/nanumbarungothic/nanumbarungothic.css"
+      },
+      {
+        rel: "stylesheet",
+        type: "text/css",
+        href: "https://fonts.googleapis.com/css?family=Roboto:700&display=swap"
+      }
+    ]
   },
   /*
    ** Customize the progress bar color
@@ -26,7 +39,70 @@ module.exports = {
 
   env: {
     baseUrl: process.env.BASE_URL || "http://localhost:3000",
-    apiBaseUrl: process.env.API_BASE_URL || "http://localhost:8080"
+    apis: {
+      baseUrl: process.env.API_BASE_URL || "http://localhost:8080",
+      auth: {
+        csrf: {
+          uri: "/api/csrf-token",
+          method: "get"
+        },
+        login: {
+          uri: "/api/authorize",
+          method: "post"
+        },
+        logout: {
+          uri: "/api/logout",
+          method: "post"
+        },
+        social: {
+          list: {
+            google: {
+              provider: "google",
+              name: "구글",
+              authUrl:
+                process.env.API_BASE_URL ||
+                "http://localhost:8080" + "/api/oauth2/authorize/google"
+            },
+            naver: {
+              provider: "naver",
+              name: "네이버",
+              authUrl:
+                process.env.API_BASE_URL ||
+                "http://localhost:8080" + "/api/oauth2/authorize/naver"
+            },
+            kakao: {
+              provider: "kakao",
+              name: "카카오",
+              authUrl:
+                process.env.API_BASE_URL ||
+                "http://localhost:8080" + "/api/oauth2/authorize/kakao"
+            }
+          },
+          unlink: {
+            uri: "/api/oauth2/unlink",
+            method: "post"
+          }
+        }
+      },
+      users: {
+        signup: {
+          uri: "/api/users",
+          method: "post"
+        },
+        getProfile: {
+          uri: "/api/users/me",
+          method: "get"
+        },
+        updateProfile: {
+          uri: "/api/users/me",
+          method: "put"
+        },
+        withdraw: {
+          uri: "/api/users/withdraw",
+          method: "delete"
+        }
+      }
+    }
   },
   /*
    ** Build configuration
@@ -46,16 +122,23 @@ module.exports = {
       }
     }
   },
-
+  router: {
+    middleware: "csrf"
+  },
   modules: [
     "bootstrap-vue/nuxt",
     "@nuxtjs/axios",
     "cookie-universal-nuxt",
     // With options
-    ["cookie-universal-nuxt", { alias: "cookiz" }]
+    ["cookie-universal-nuxt", { alias: "cookiz" }],
+    "@nuxtjs/moment"
   ],
+  plugins: ["~/plugins/axios"],
   axios: {
     baseURL: process.env.API_BASE_URL || "http://localhost:8080",
     credentials: true
+  },
+  moment: {
+    timezone: true
   }
 };

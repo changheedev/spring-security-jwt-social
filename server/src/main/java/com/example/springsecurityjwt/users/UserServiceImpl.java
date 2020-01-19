@@ -1,23 +1,23 @@
 package com.example.springsecurityjwt.users;
 
-import com.example.springsecurityjwt.authentication.UnauthorizedException;
-import com.example.springsecurityjwt.authentication.oauth2.OAuth2ProcessException;
 import com.example.springsecurityjwt.authentication.oauth2.OAuth2Token;
 import com.example.springsecurityjwt.authentication.oauth2.account.OAuth2Account;
 import com.example.springsecurityjwt.authentication.oauth2.account.OAuth2AccountDTO;
 import com.example.springsecurityjwt.authentication.oauth2.account.OAuth2AccountRepository;
 import com.example.springsecurityjwt.authentication.oauth2.userInfo.OAuth2UserInfo;
-import com.example.springsecurityjwt.security.CustomUserDetails;
+import com.example.springsecurityjwt.security.UserDetailsImpl;
+import com.example.springsecurityjwt.validation.SimpleFieldError;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.userdetails.UserDetails;
-import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.Assert;
 
 import java.util.Optional;
 
 @Service
+@Transactional
 @RequiredArgsConstructor
 public class UserServiceImpl implements UserService {
 
@@ -26,11 +26,8 @@ public class UserServiceImpl implements UserService {
     private final PasswordEncoder passwordEncoder;
 
     @Override
-    public void signUpService(SignUpRequest signUpRequest) {
-
-        if (userRepository.findByUsername(signUpRequest.getEmail()).isPresent())
-            throw new DuplicatedUsernameException("This is a registered member");
-
+    public void saveUser(SignUpRequest signUpRequest){
+        checkDuplicateEmail(signUpRequest.getEmail());
         User user = User.builder()
                 .username(signUpRequest.getEmail())
                 .name(signUpRequest.getName())
@@ -43,15 +40,15 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public Optional<OAuth2AccountDTO> getOAuth2Account(String username) {
         Optional<User> optionalUser = userRepository.findByUsername(username);
-        if(!optionalUser.isPresent() || optionalUser.get().getSocial() == null) return Optional.empty();
+        if (!optionalUser.isPresent() || optionalUser.get().getSocial() == null) return Optional.empty();
         return Optional.of(optionalUser.get().getSocial().toDTO());
     }
 
     @Override
-    @Transactional
-    public void updateProfile(String username, UpdateProfileRequest updateProfileRequest) {
+    public void updateProfile(String username, UpdateProfileRequest updateProfileRequest){
 
         User user = userRepository.findByUsername(username).get();
 
@@ -61,15 +58,13 @@ public class UserServiceImpl implements UserService {
 
         //이메일이 변경되었는지 체크
         if (!user.getEmail().equals(updateProfileRequest.getEmail())) {
-            if (userRepository.existsByEmail(updateProfileRequest.getEmail()))
-                throw new DuplicatedUsernameException("This email is already in use");
+            checkDuplicateEmail(updateProfileRequest.getEmail());
             user.updateEmail(updateProfileRequest.getEmail());
         }
     }
 
 
     @Override
-    @Transactional
     public UserDetails loginOAuth2User(String provider, OAuth2Token oAuth2Token, OAuth2UserInfo userInfo) {
 
         Optional<OAuth2Account> optOAuth2Account = oAuth2AccountRepository.findByProviderAndProviderId(provider, userInfo.getId());
@@ -121,7 +116,7 @@ public class UserServiceImpl implements UserService {
             user.linkSocial(newAccount);
         }
 
-        return CustomUserDetails.builder()
+        return UserDetailsImpl.builder()
                 .id(user.getId())
                 .username(user.getUsername())
                 .name(user.getName())
@@ -131,19 +126,8 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
-    @Transactional
-    public UserDetails linkOAuth2Account(String targetUsername, String provider, OAuth2Token oAuth2Token, OAuth2UserInfo userInfo) {
-
-        //소셜 계정과 연동된 다른 계정이 존재하는지 검사
-        if (oAuth2AccountRepository.existsByProviderAndProviderId(provider, userInfo.getId()))
-            throw new OAuth2ProcessException("This account is already linked");
-
-        User user = userRepository.findByUsername(targetUsername)
-                .orElseThrow(() -> new UsernameNotFoundException("Member not found"));
-
-        //계정과 연동된 소셜 계정이 존재하는지 검사
-        if(user.getSocial() != null)
-            throw new OAuth2ProcessException("This user has already linked account");
+    public UserDetails linkOAuth2Account(String username, String provider, OAuth2Token oAuth2Token, OAuth2UserInfo userInfo) {
+        User user = checkRegisteredUser(username);
 
         //소셜 계정 정보 생성
         OAuth2Account oAuth2Account = OAuth2Account.builder()
@@ -158,7 +142,7 @@ public class UserServiceImpl implements UserService {
         //연관관계 설정
         user.linkSocial(oAuth2Account);
 
-        return CustomUserDetails.builder()
+        return UserDetailsImpl.builder()
                 .id(user.getId())
                 .username(user.getUsername())
                 .name(user.getName())
@@ -168,23 +152,37 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
-    @Transactional
-    public void unlinkOAuth2Account(String username) {
-        User user = userRepository.findByUsername(username).orElseThrow(() -> new UnauthorizedException("username cannot be null"));
-
-        if(user.getType().equals(UserType.OAUTH) || user.getSocial() == null)
-            throw new OAuth2ProcessException("소셜 서비스로 가입된 계정이거나 연동된 정보가 없습니다");
+    public OAuth2AccountDTO unlinkOAuth2Account(String username) {
+        User user = checkRegisteredUser(username);
 
         //연관관계 해제
         OAuth2Account oAuth2Account = user.getSocial();
+        OAuth2AccountDTO oAuth2AccountDTO = oAuth2Account.toDTO();
         user.unlinkSocial();
         oAuth2AccountRepository.delete(oAuth2Account);
+
+        return oAuth2AccountDTO;
     }
 
     @Override
-    @Transactional
-    public void withdrawUser(String username) {
-        User user = userRepository.findByUsername(username).orElseThrow(() -> new UnauthorizedException("username cannot be null"));
+    public Optional<OAuth2AccountDTO> withdrawUser(String username) {
+        OAuth2AccountDTO oAuth2AccountDTO = null;
+        User user = checkRegisteredUser(username);
+        //연동된 소셜 계정이 있다면 계정 정보를 리턴하기 위해 저장
+        if(user.getSocial() != null)
+            oAuth2AccountDTO = user.getSocial().toDTO();
         userRepository.delete(user);
+        return oAuth2AccountDTO != null ? Optional.of(oAuth2AccountDTO) : Optional.empty();
+    }
+
+    private void checkDuplicateEmail(String email) {
+        if(userRepository.existsByEmail(email))
+            throw new DuplicateUserException("사용중인 이메일 입니다.", new SimpleFieldError("email", "사용중인 이메일 입니다."));
+    }
+
+    private User checkRegisteredUser(String username) {
+        Optional<User> optUser = userRepository.findByUsername(username);
+        Assert.state(optUser.isPresent(), "가입되지 않은 회원입니다.");
+        return optUser.get();
     }
 }

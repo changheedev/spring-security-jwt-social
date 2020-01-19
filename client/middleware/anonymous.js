@@ -1,5 +1,5 @@
 export default function({ store, redirect }) {
-  if (store.state.loggedName) {
+  if (!(Object.entries(store.state.user).length === 0)) {
     return redirect("/");
   }
 }

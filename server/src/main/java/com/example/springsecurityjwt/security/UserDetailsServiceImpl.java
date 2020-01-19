@@ -14,7 +14,7 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 @RequiredArgsConstructor
 @Slf4j
-public class CustomUserDetailsService implements UserDetailsService {
+public class UserDetailsServiceImpl implements UserDetailsService {
 
     private final UserRepository userRepository;
 
@@ -24,7 +24,7 @@ public class CustomUserDetailsService implements UserDetailsService {
         User user = userRepository.findByUsername(username).orElseThrow(() ->
                 new UsernameNotFoundException("등록되지 않은 회원입니다."));
 
-        CustomUserDetails userDetails = CustomUserDetails.builder()
+        UserDetailsImpl userDetails = UserDetailsImpl.builder()
                 .id(user.getId())
                 .username(user.getUsername())
                 .name(user.getName())

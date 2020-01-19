@@ -22,10 +22,7 @@ public class CookieUtils {
     }
 
     public static void addCookie(HttpServletResponse response, String name, String value, int maxAge) {
-        Cookie cookie = new Cookie(name, value);
-        cookie.setPath("/");
-        cookie.setMaxAge(maxAge);
-        response.addCookie(cookie);
+        addCookie(response, name, value, false, false, maxAge);
     }
 
     public static void addCookie(HttpServletResponse response, String name, String value, boolean httpOnly, boolean secure, int maxAge) {
@@ -47,18 +44,6 @@ public class CookieUtils {
                     cookie.setMaxAge(0);
                     response.addCookie(cookie);
                 }
-            }
-        }
-    }
-
-    public static void deleteAll(HttpServletRequest request, HttpServletResponse response) {
-        Cookie[] cookies = request.getCookies();
-        if (cookies != null && cookies.length > 0) {
-            for (Cookie cookie : cookies) {
-                cookie.setValue("");
-                cookie.setPath("/");
-                cookie.setMaxAge(0);
-                response.addCookie(cookie);
             }
         }
     }

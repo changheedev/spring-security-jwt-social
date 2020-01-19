@@ -5,7 +5,6 @@ import com.example.springsecurityjwt.advice.CommonExceptionAdvice;
 import com.example.springsecurityjwt.jwt.JwtProvider;
 import com.example.springsecurityjwt.users.SignUpRequest;
 import com.example.springsecurityjwt.util.JsonUtils;
-import com.google.gson.reflect.TypeToken;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
@@ -15,7 +14,6 @@ import org.springframework.web.util.UriComponentsBuilder;
 
 import javax.servlet.http.Cookie;
 import java.nio.charset.StandardCharsets;
-import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -23,7 +21,8 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.print;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-public class AuthenticationApiTest extends SpringMvcTestSupport{
+@Transactional
+public class AuthenticationApiTest extends SpringMvcTestSupport {
 
     @Autowired
     private JwtProvider jwtProvider;
@@ -34,7 +33,6 @@ public class AuthenticationApiTest extends SpringMvcTestSupport{
     private final String REDIRECT_URI = "http://localhost:3000";
 
     @Test
-    @Transactional
     public void Cookie_AccessToken_발급_테스트() throws Exception {
 
         //given
@@ -43,9 +41,10 @@ public class AuthenticationApiTest extends SpringMvcTestSupport{
                 .username(signUpRequest.getEmail())
                 .password(signUpRequest.getPassword())
                 .build();
-
         //when
         MvcResult mvcResult = mockMvc.perform(post("/authorize")
+                .header("X-CSRF-TOKEN", CSRF_TOKEN)
+                .cookie(new Cookie("CSRF-TOKEN", CSRF_TOKEN))
                 .contentType(MediaType.APPLICATION_JSON_VALUE)
                 .content(JsonUtils.toJson(authorizationRequest)))
                 .andExpect(status().isOk())
@@ -53,9 +52,9 @@ public class AuthenticationApiTest extends SpringMvcTestSupport{
 
         //then
         Cookie cookie = mvcResult.getResponse().getCookie("access_token");
-        assertNotNull(cookie);
-        assertTrue(cookie.getValue().startsWith("eyJhbGciOiJIUzI1NiJ9"));
-        assertTrue(cookie.isHttpOnly());
+        assertNotNull(cookie, "토큰 쿠키가 생성되지 않음");
+        assertTrue(cookie.getValue().startsWith("eyJhbGciOiJIUzI1NiJ9"), "토큰 정보가 올바르게 생성되지 않음");
+        assertTrue(cookie.isHttpOnly(), "쿠키를 생성할 때 옵션이 적용되지 않음");
     }
 
     @Test
@@ -69,9 +68,11 @@ public class AuthenticationApiTest extends SpringMvcTestSupport{
 
         //when
         MvcResult mvcResult = mockMvc.perform(post("/authorize")
+                .header("X-CSRF-TOKEN", CSRF_TOKEN)
+                .cookie(new Cookie("CSRF-TOKEN", CSRF_TOKEN))
                 .contentType(MediaType.APPLICATION_JSON_VALUE)
                 .content(JsonUtils.toJson(authorizationRequest)))
-                .andExpect(status().isBadRequest())
+                .andExpect(status().isUnauthorized())
                 .andDo(print()).andReturn();
     }
 
@@ -86,6 +87,8 @@ public class AuthenticationApiTest extends SpringMvcTestSupport{
 
         //when
         MvcResult mvcResult = mockMvc.perform(post("/authorize")
+                .header("X-CSRF-TOKEN", CSRF_TOKEN)
+                .cookie(new Cookie("CSRF-TOKEN", CSRF_TOKEN))
                 .contentType(MediaType.APPLICATION_JSON_VALUE)
                 .content(JsonUtils.toJson(authorizationRequest)))
                 .andExpect(status().isBadRequest())
@@ -93,39 +96,38 @@ public class AuthenticationApiTest extends SpringMvcTestSupport{
 
         //then
         String content = mvcResult.getResponse().getContentAsString();
-        List<CommonExceptionAdvice.ValidationError> errors = JsonUtils.fromJson(content, new TypeToken<List<CommonExceptionAdvice.ValidationError>>(){}.getType());
-        assertEquals(errors.size(), 1);
-        errors.forEach(error -> {
-            assertEquals(error.getField(), "password");
+        CommonExceptionAdvice.ErrorResponse errorResponse = JsonUtils.fromJson(content, CommonExceptionAdvice.ErrorResponse.class);
+        assertEquals(1, errorResponse.getErrors().size(), "Password Null 유효성 검사가 정상적으로 진행되지 않음");
+        errorResponse.getErrors().forEach(error -> {
+            assertEquals("password", error.getField(), "Password Null 유효성 검사가 정상적으로 진행되지 않음");
             log.debug(error.getField());
-            log.debug(error.getMessage());
+            log.debug(error.getDefaultMessage());
         });
 
     }
 
     @Test
-    @Transactional
     public void 로그아웃_테스트() throws Exception {
 
         SignUpRequest signUpRequest = registerTestUser("test@email.com", "ChangHee", "password");
         String token = jwtProvider.generateToken(signUpRequest.getEmail());
-        Cookie cookie = new Cookie("access_token", token);
-        cookie.setMaxAge(60 * 3);
-        cookie.setHttpOnly(true);
-        cookie.setPath("/");
 
         MvcResult mvcResult = mockMvc.perform(post("/logout")
-                .cookie(cookie))
+                .header("X-CSRF-TOKEN", CSRF_TOKEN)
+                .cookie(new Cookie("CSRF-TOKEN", CSRF_TOKEN))
+                .cookie(new Cookie("access_token", token)))
                 .andExpect(status().isOk())
                 .andDo(print()).andReturn();
 
-        assertEquals(mvcResult.getResponse().getCookie("access_token").getValue(), "");
+        assertEquals("", mvcResult.getResponse().getCookie("access_token").getValue(), "토큰 정보가 삭제되지 않음");
     }
 
     @Test
     public void 인증_토큰이_없을때_로그아웃_요청_실패_테스트() throws Exception {
 
-        MvcResult mvcResult = mockMvc.perform(post("/logout"))
+        MvcResult mvcResult = mockMvc.perform(post("/logout")
+                .header("X-CSRF-TOKEN", CSRF_TOKEN)
+                .cookie(new Cookie("CSRF-TOKEN", CSRF_TOKEN)))
                 .andExpect(status().isUnauthorized())
                 .andDo(print()).andReturn();
     }
@@ -145,9 +147,8 @@ public class AuthenticationApiTest extends SpringMvcTestSupport{
                 .andDo(print()).andReturn();
 
         //then
-        //소셜 서비스에서 제공하는 인증 페이지로 리디렉션 된다.
         String redirectUri = mvcResult.getResponse().getRedirectedUrl();
-        assertTrue(redirectUri.contains(GOOGLE_AUTHORIZATION_URI));
+        assertTrue(redirectUri.contains(GOOGLE_AUTHORIZATION_URI), "구글 로그인 페이지로 리디렉션 되지 않음");
     }
 
     @Test
@@ -165,9 +166,8 @@ public class AuthenticationApiTest extends SpringMvcTestSupport{
                 .andDo(print()).andReturn();
 
         //then
-        //소셜 서비스에서 제공하는 인증 페이지로 리디렉션 된다.
         String redirectUri = mvcResult.getResponse().getRedirectedUrl();
-        assertTrue(redirectUri.contains(NAVER_AUTHORIZATION_URI));
+        assertTrue(redirectUri.contains(NAVER_AUTHORIZATION_URI), "네이버 로그인 페이지로 리디렉션 되지 않음");
     }
 
     @Test
@@ -185,9 +185,8 @@ public class AuthenticationApiTest extends SpringMvcTestSupport{
                 .andDo(print()).andReturn();
 
         //then
-        //소셜 서비스에서 제공하는 인증 페이지로 리디렉션 된다.
         String redirectUri = mvcResult.getResponse().getRedirectedUrl();
-        assertTrue(redirectUri.contains(KAKAO_AUTHORIZATION_URI));
+        assertTrue(redirectUri.contains(KAKAO_AUTHORIZATION_URI), "카카오 로그인 페이지로 리디렉션 되지 않음");
     }
 
     private SignUpRequest registerTestUser(String email, String name, String password) throws Exception {
@@ -204,6 +203,8 @@ public class AuthenticationApiTest extends SpringMvcTestSupport{
 
     private void requestSignUpApi(SignUpRequest signUpRequest) throws Exception {
         MvcResult mvcResult = mockMvc.perform(post("/users")
+                .header("X-CSRF-TOKEN", CSRF_TOKEN)
+                .cookie(new Cookie("CSRF-TOKEN", CSRF_TOKEN))
                 .contentType(MediaType.APPLICATION_JSON_VALUE)
                 .content(JsonUtils.toJson(signUpRequest)))
                 .andExpect(status().isOk())

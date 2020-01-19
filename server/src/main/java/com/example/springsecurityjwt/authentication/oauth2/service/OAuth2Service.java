@@ -1,7 +1,7 @@
 package com.example.springsecurityjwt.authentication.oauth2.service;
 
 import com.example.springsecurityjwt.authentication.oauth2.ClientRegistration;
-import com.example.springsecurityjwt.authentication.oauth2.OAuth2ProcessException;
+import com.example.springsecurityjwt.authentication.oauth2.OAuth2RequestFailedException;
 import com.example.springsecurityjwt.authentication.oauth2.OAuth2Token;
 import com.example.springsecurityjwt.authentication.oauth2.userInfo.OAuth2UserInfo;
 import com.example.springsecurityjwt.authentication.oauth2.userInfo.OAuth2UserInfoFactory;
@@ -64,7 +64,7 @@ public abstract class OAuth2Service {
             entity = restTemplate.exchange(clientRegistration.getProviderDetails().getTokenUri(), HttpMethod.POST, httpEntity, String.class);
         } catch (HttpStatusCodeException exception) {
             int statusCode = exception.getStatusCode().value();
-            throw new OAuth2ProcessException(String.format("Get access token failed [%d].", statusCode), exception);
+            throw new OAuth2RequestFailedException(String.format("%s 토큰 요청 실패 [응답코드 : %d].", clientRegistration.getRegistrationId().toUpperCase(), statusCode), exception);
         }
 
         log.debug(entity.getBody());
@@ -97,7 +97,7 @@ public abstract class OAuth2Service {
             entity = restTemplate.exchange(clientRegistration.getProviderDetails().getTokenUri(), HttpMethod.POST, httpEntity, String.class);
         } catch (HttpStatusCodeException exception) {
             int statusCode = exception.getStatusCode().value();
-            throw new OAuth2ProcessException(String.format("Refresh token failed [%d].", statusCode), exception);
+            throw new OAuth2RequestFailedException(String.format("%s 토큰 갱신 실패 [응답코드 : %d].", clientRegistration.getRegistrationId().toUpperCase(), statusCode), exception);
         }
 
         JsonObject jsonObj = JsonUtils.parse(entity.getBody()).getAsJsonObject();
@@ -123,7 +123,7 @@ public abstract class OAuth2Service {
             entity = restTemplate.exchange(clientRegistration.getProviderDetails().getUserInfoUri(), HttpMethod.GET, httpEntity, String.class);
         } catch (HttpStatusCodeException exception) {
             int statusCode = exception.getStatusCode().value();
-            throw new OAuth2ProcessException(String.format("Get user info failed [%d].", statusCode), exception);
+            throw new OAuth2RequestFailedException(String.format("%s 유저 정보 요청 실패 [응답코드 : %d].", clientRegistration.getRegistrationId().toUpperCase(), statusCode), exception);
         }
 
         Map<String, Object> userAttributes = JsonUtils.fromJson(entity.getBody(), Map.class);
