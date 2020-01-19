@@ -1,10 +1,8 @@
 # 프로젝트 생성 및 DB 연결 설정
 
----
 
 
-
-## 프로젝트 생성
+### 프로젝트 생성
 
 ---
 
@@ -20,7 +18,7 @@ https://start.spring.io 에서 아래 4가지 라이브러리를 추가한 후 �
 
 
 
-## DB 설정
+### DB 설정
 
 ---
 
@@ -30,7 +28,7 @@ MariaDB를 사용하기 위해 도커를 통해 MariaDB를 설치합니다.
 
 
 
-### MariaDB 설치
+#### MariaDB 설치
 
 아래 링크로 접속하여 도커를 다운 받은 후 설치합니다.
 
@@ -53,13 +51,13 @@ docker pull mariadb:latest
 
 
 
-### 컨테이너 실행
+#### 컨테이너 실행
 
 컨테이너를 실행하는 방법으로는 명령어로 실행하는 방법과 docker-compose 를 이용하는 방법이 있습니다.
 
 
 
-#### 명령어로 실행
+**명령어로 실행**
 
 ```
 docker run --name mariadb -e MYSQL_ROOT_PASSWORD=password -p 13306:3306 -d mariadb:latest 
@@ -73,7 +71,7 @@ docker run --name mariadb -e MYSQL_ROOT_PASSWORD=password -p 13306:3306 -d maria
 
 
 
-#### docker-compose
+**docker-compose**
 
 실행 스크립트를 docker-compose.yml 파일에 작성해놓으면 매번 실행시 마다 명령어를 적어주지 않아도 됩니다.
 
@@ -149,7 +147,7 @@ set PASSWORD for ‘계정’@’host' = PASSWORD(‘바꿀 비밀번호’);
 
 
 
-### 프로젝트에서 MariaDB 컨테이너 연결
+#### 프로젝트에서 MariaDB 컨테이너 연결
 
 **build.gradle**
 
@@ -174,14 +172,14 @@ spring:
 
 
 
-### JPA 설정
+#### JPA 설정
 
 **application.yml**
 
 ```yaml
 spring:
   datasource: ...
-	jpa:
+  jpa:
     show-sql: true #실행된 쿼리를 출력
     hibernate:
       ddl-auto: create

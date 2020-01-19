@@ -1,7 +1,5 @@
 # Security 설정
 
----
-
 
 
 **SecurityConfigurer**
@@ -51,7 +49,7 @@ Security 에서 제공하는 기본 로그인과 로그아웃을 비활성화 �
 
 
 
-## CSRF
+### CSRF
 
 ---
 
@@ -227,7 +225,7 @@ export default function({ app }) {
 
 
 
-## CORS
+### CORS
 
 ---
 
