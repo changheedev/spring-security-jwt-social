@@ -3,6 +3,7 @@ package com.example.springsecurityjwt.users;
 import com.example.springsecurityjwt.SpringTestSupport;
 import com.example.springsecurityjwt.authentication.oauth2.OAuth2Token;
 import com.example.springsecurityjwt.authentication.oauth2.account.OAuth2Account;
+import com.example.springsecurityjwt.authentication.oauth2.account.OAuth2AccountDTO;
 import com.example.springsecurityjwt.authentication.oauth2.account.OAuth2AccountRepository;
 import com.example.springsecurityjwt.authentication.oauth2.userInfo.OAuth2UserInfo;
 import com.example.springsecurityjwt.authentication.oauth2.userInfo.OAuth2UserInfoFactory;
@@ -222,6 +223,24 @@ public class UserServiceTest extends SpringTestSupport {
         assertThrows(IllegalStateException.class, () -> {
             userService.unlinkOAuth2Account(user.getUsername());
         }, "소셜 서비스로 가입된 계정의 연동해제 과정에서 IllegalStateException 이 던져지지 않음");
+    }
+
+    @Test
+    public void 연동된_소셜_계정이_없을때_withdrawUser_메소드에서_Optional_empty_를_반환하는지_테스트() {
+        //given
+        User user = User.builder()
+                .username("test@email.com")
+                .email("test@email.com")
+                .name("ChangHee")
+                .type(UserType.OAUTH)
+                .build();
+        userRepository.save(user);
+
+        //when
+        Optional<OAuth2AccountDTO> optionalOAuth2AccountDTO = userService.withdrawUser(user.getUsername());
+
+        //then
+        assertFalse(optionalOAuth2AccountDTO.isPresent());
     }
 
     @Test

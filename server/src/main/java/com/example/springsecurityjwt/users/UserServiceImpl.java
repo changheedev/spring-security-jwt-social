@@ -172,7 +172,7 @@ public class UserServiceImpl implements UserService {
         if(user.getSocial() != null)
             oAuth2AccountDTO = user.getSocial().toDTO();
         userRepository.delete(user);
-        return oAuth2AccountDTO != null ? Optional.of(oAuth2AccountDTO) : Optional.empty();
+        return Optional.ofNullable(oAuth2AccountDTO);
     }
 
     private void checkDuplicateEmail(String email) {
