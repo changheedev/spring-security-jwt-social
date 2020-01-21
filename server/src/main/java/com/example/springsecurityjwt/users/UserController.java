@@ -6,6 +6,7 @@ import com.example.springsecurityjwt.authentication.oauth2.account.OAuth2Account
 import com.example.springsecurityjwt.authentication.oauth2.service.OAuth2Service;
 import com.example.springsecurityjwt.authentication.oauth2.service.OAuth2ServiceFactory;
 import com.example.springsecurityjwt.security.AuthorityType;
+import com.example.springsecurityjwt.security.StatelessCSRFFilter;
 import com.example.springsecurityjwt.security.UserDetailsImpl;
 import com.example.springsecurityjwt.util.CookieUtils;
 import com.example.springsecurityjwt.validation.ValidationException;
@@ -76,5 +77,6 @@ public class UserController {
             oAuth2Service.unlink(clientRegistration, oAuth2AccountDTO.getOAuth2Token());
         }
         CookieUtils.deleteCookie(request, response, "access_token");
+        CookieUtils.deleteCookie(request, response, StatelessCSRFFilter.CSRF_TOKEN);
     }
 }
