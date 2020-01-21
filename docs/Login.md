@@ -219,7 +219,7 @@ $ java -DSpring.config.location=file:/Users/me/Documents/properties/ -jar myproj
 
 IDE 에서는 VM 옵션에 추가하여 사용할 수 있습니다.
 
-![ide_vm_option](기본_로그인.assets/ide_vm_option.png)
+![ide_vm_option](Login.assets/ide_vm_option.png)
 
 
 

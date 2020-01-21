@@ -27,14 +27,14 @@
 
 ---
 
-1. [프로젝트 생성 및 DB 연결 설정](docs/프로젝트_생성_및_DB_연결_설정.md)
-2. [Security 설정](docs/Security_설정.md)
-3. [회원가입](docs/회원가입.md)
-4. [기본 로그인](docs/기본_로그인.md)
+1. [프로젝트 생성 및 DB 연결 설정](docs/Init.md)
+2. [Security 설정](docs/Security.md)
+3. [회원가입](docs/Signup.md)
+4. [기본 로그인](docs/Login.md)
 5. 소셜 로그인
 6. 프로필 변경
 7. 계정 연동 & 연동 해제
-8. 회원 탈퇴
+8. [회원 탈퇴](docs/Withdraw.md)
 
 
 
