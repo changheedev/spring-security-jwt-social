@@ -129,6 +129,9 @@ public class UserServiceImpl implements UserService {
     public UserDetails linkOAuth2Account(String username, String provider, OAuth2Token oAuth2Token, OAuth2UserInfo userInfo) {
         User user = checkRegisteredUser(username);
 
+        //이미 등록된 소셜 계정이라면 연동된 계정이 존재
+        Assert.state(oAuth2AccountRepository.existsByProviderAndProviderId(provider, userInfo.getId()) == false, "소셜 계정에 연동된 계정이 이미 존재합니다.");
+
         //소셜 계정 정보 생성
         OAuth2Account oAuth2Account = OAuth2Account.builder()
                 .provider(provider)
