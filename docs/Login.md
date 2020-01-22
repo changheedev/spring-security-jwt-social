@@ -1,7 +1,5 @@
 # 기본 로그인
 
-
-
 ### 인터페이스 구현
 
 ---
@@ -174,6 +172,94 @@ public class SecurityConfigurer extends WebSecurityConfigurerAdapter {
 
 
 
+### Util 클래스
+
+---
+
+
+
+**DateConvertor**
+
+LocalDateTime 타입의 데이터와 다른 타입의 데이터 간의 변환이 용이하도록 구현한 클래스입니다.
+
+```java
+public class DateConvertor {
+
+    public static Date toDate(LocalDateTime localDateTime) {
+        return Date.from(localDateTime.atZone(ZoneId.systemDefault()).toInstant());
+    }
+
+    public static Long toEpochMilli (LocalDateTime localDateTime) {
+        return localDateTime.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli();
+    }
+
+    public static LocalDateTime toLocalDateTime(Date date) {
+        Instant instant = date.toInstant();
+        return LocalDateTime.ofInstant(instant, ZoneId.systemDefault());
+    }
+}
+```
+
+
+
+**CookieUtils**
+
+웹상의 많은 자료들이 LocalStorage 를 이용해 토큰을 저장하는 방식을 소개하고 있는데 LocalStorage 는 javascript 코드로 접근이 가능하기 때문에 XSS 공격에 취약하다는 단점이 있기 때문에 중요한 데이터를 보관하는 장소로는 사용하지 않는 것을 권장하고 있습니다. 
+
+반면에 쿠키는 httpOnly 옵션을 사용하면 http 통신 상에서만 쿠키가 사용되어 javascript 코드를 통한 접근을 막을 수 있으며, secure 옵션을 사용하면 https 통신에서만 쿠키를 전송하게 되어 보안을 더 강화할 수 있습니다.
+
+물론, 쿠키는 CSRF (Cross Site Request Forgery - 사이트 간 요청 위조) 공격에 노출될 수 있지만 XSS 공격에 비해 완벽한 대비가 가능합니다. 다만, 유출 되었을 때 위험도가 큰 Refresh-Token 을 보관하는 용도로는 쿠키가 적절하지 않기 때문에 Refresh-Token 의 사용은 포기하고 Access-Token 의 만료기간을 좀 더 늘려주는 방향으로 구현하게 되었습니다.
+
+
+
+```java
+public class CookieUtils {
+
+    public static Optional<Cookie> getCookie(HttpServletRequest request, String name) {
+        Cookie[] cookies = request.getCookies();
+
+        if (cookies != null && cookies.length > 0) {
+            for (Cookie cookie : cookies) {
+                if (cookie.getName().equals(name)) {
+                    return Optional.of(cookie);
+                }
+            }
+        }
+
+        return Optional.empty();
+    }
+
+    public static void addCookie(HttpServletResponse response, String name, String value, int maxAge) {
+        addCookie(response, name, value, false, false, maxAge);
+    }
+
+    public static void addCookie(HttpServletResponse response, String name, String value, boolean httpOnly, boolean secure, int maxAge) {
+        Cookie cookie = new Cookie(name, value);
+        cookie.setPath("/");
+        cookie.setHttpOnly(httpOnly);
+        cookie.setSecure(secure);
+        cookie.setMaxAge(maxAge);
+        response.addCookie(cookie);
+    }
+
+    public static void deleteCookie(HttpServletRequest request, HttpServletResponse response, String name) {
+        Cookie[] cookies = request.getCookies();
+        if (cookies != null && cookies.length > 0) {
+            for (Cookie cookie : cookies) {
+                if (cookie.getName().equals(name)) {
+                    cookie.setValue("");
+                    cookie.setPath("/");
+                    cookie.setMaxAge(0);
+                    response.addCookie(cookie);
+                }
+            }
+        }
+    }
+}
+```
+
+
+
 ### JWT 토큰 발급
 
 ---
@@ -303,89 +389,66 @@ public class JwtProvider {
 
 
 
-### Util 클래스
+**JwtAuthenticationFilter**
 
----
-
-
-
-**DateConvertor**
-
-LocalDateTime 타입의 데이터와 다른 타입의 데이터 간의 변환이 용이하도록 구현한 클래스입니다.
+JwtAuthenticationFilter 에서는 request 에 인증 토큰 쿠키가 포함되어 있는지 체크한 후 토큰에 포함된 회원 정보를 이용해 새로운 Authentication 인스턴스를 생성합니다. 새로 생성된 인스턴스는 이후 Security 에서 참조될 수 있도록 SecurityContext 에 추가해줍니다.
 
 ```java
-public class DateConvertor {
+@Component
+@RequiredArgsConstructor
+public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
-    public static Date toDate(LocalDateTime localDateTime) {
-        return Date.from(localDateTime.atZone(ZoneId.systemDefault()).toInstant());
-    }
+    private final UserDetailsServiceImpl userDetailsService;
+    private final JwtProvider jwtProvider;
 
-    public static Long toEpochMilli (LocalDateTime localDateTime) {
-        return localDateTime.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli();
-    }
+    @Override
+    protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain) throws ServletException, IOException {
 
-    public static LocalDateTime toLocalDateTime(Date date) {
-        Instant instant = date.toInstant();
-        return LocalDateTime.ofInstant(instant, ZoneId.systemDefault());
+        String username = null;
+        String jwt = null;
+
+        Optional<Cookie> jwtCookie = CookieUtils.getCookie(request, "access_token");
+
+        if(jwtCookie.isPresent()){
+            jwt = jwtCookie.get().getValue();
+            username = jwtProvider.extractUsername(jwt);
+        }
+
+        /**
+         * 토큰에서 username 을 정상적으로 추출할 수 있고
+         * SecurityContextHolder 내에 authentication 객체(이전에 인증된 정보)가 없는 상태인지를 검사한다.
+         */
+        if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
+            UserDetailsImpl userDetails = (UserDetailsImpl) userDetailsService.loadUserByUsername(username);
+
+            //토큰이 유효하다면
+            if (jwtProvider.validateToken(jwt, userDetails.getUsername())) {
+                //새로운 인증 정보를 생성
+                UsernamePasswordAuthenticationToken usernamePasswordAuthenticationToken = new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
+                usernamePasswordAuthenticationToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+                //인증 정보를 SecurityContextHolder 에 저장
+                SecurityContextHolder.getContext().setAuthentication(usernamePasswordAuthenticationToken);
+            }
+        }
+        filterChain.doFilter(request, response);
     }
 }
+
 ```
 
 
 
-**CookieUtils**
-
-웹상의 많은 자료들이 LocalStorage 를 이용해 토큰을 저장하는 방식을 소개하고 있는데 LocalStorage 는 javascript 코드로 접근이 가능하기 때문에 XSS 공격에 취약하다는 단점이 있기 때문에 중요한 데이터를 보관하는 장소로는 사용하지 않는 것을 권장하고 있습니다. 
-
-반면에 쿠키는 httpOnly 옵션을 사용하면 http 통신 상에서만 쿠키가 사용되어 javascript 코드를 통한 접근을 막을 수 있으며, secure 옵션을 사용하면 https 통신에서만 쿠키를 전송하게 되어 보안을 더 강화할 수 있습니다.
-
-물론, 쿠키는 CSRF (Cross Site Request Forgery - 사이트 간 요청 위조) 공격에 노출될 수 있지만 XSS 공격에 비해 완벽한 대비가 가능합니다. 다만, 유출 되었을 때 위험도가 큰 Refresh-Token 을 보관하는 용도로는 쿠키가 적절하지 않기 때문에 Refresh-Token 의 사용은 포기하고 Access-Token 의 만료기간을 좀 더 늘려주는 방향으로 구현하게 되었습니다.
-
-
+그 다음, Security 인증 필터 보다 먼저 실행 될 수 있도록 우선순위를 설정해줍니다.
 
 ```java
-public class CookieUtils {
-
-    public static Optional<Cookie> getCookie(HttpServletRequest request, String name) {
-        Cookie[] cookies = request.getCookies();
-
-        if (cookies != null && cookies.length > 0) {
-            for (Cookie cookie : cookies) {
-                if (cookie.getName().equals(name)) {
-                    return Optional.of(cookie);
-                }
-            }
-        }
-
-        return Optional.empty();
-    }
-
-    public static void addCookie(HttpServletResponse response, String name, String value, int maxAge) {
-        addCookie(response, name, value, false, false, maxAge);
-    }
-
-    public static void addCookie(HttpServletResponse response, String name, String value, boolean httpOnly, boolean secure, int maxAge) {
-        Cookie cookie = new Cookie(name, value);
-        cookie.setPath("/");
-        cookie.setHttpOnly(httpOnly);
-        cookie.setSecure(secure);
-        cookie.setMaxAge(maxAge);
-        response.addCookie(cookie);
-    }
-
-    public static void deleteCookie(HttpServletRequest request, HttpServletResponse response, String name) {
-        Cookie[] cookies = request.getCookies();
-        if (cookies != null && cookies.length > 0) {
-            for (Cookie cookie : cookies) {
-                if (cookie.getName().equals(name)) {
-                    cookie.setValue("");
-                    cookie.setPath("/");
-                    cookie.setMaxAge(0);
-                    response.addCookie(cookie);
-                }
-            }
-        }
-    }
+@Override
+protected void configure(HttpSecurity http) throws Exception {
+    ...
+      
+    //로그인 인증을 진행하는 필터 이전에 jwtAuthenticationFilter 가 실행되도록 설정
+    http.addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
+        //CSRF 필터 설정
+        ...;
 }
 ```
 
@@ -463,6 +526,8 @@ public class AuthenticationController {
 ### 로그아웃
 
 ---
+
+
 
 로그아웃시에는 인증 토큰과 CSRF 토큰 쿠키를 삭제 처리합니다.
 
