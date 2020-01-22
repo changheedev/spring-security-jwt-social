@@ -11,12 +11,13 @@ import org.springframework.util.Assert;
 import javax.persistence.Entity;
 import javax.persistence.OneToOne;
 import javax.persistence.Table;
+import javax.persistence.UniqueConstraint;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "TBL_OAUTH_ACCOUNT")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
+@Table(name = "TBL_OAUTH_ACCOUNT", uniqueConstraints = {@UniqueConstraint(columnNames = {"provider", "providerId"})})
 public class OAuth2Account extends BaseEntity {
     private String providerId;
     private String provider;

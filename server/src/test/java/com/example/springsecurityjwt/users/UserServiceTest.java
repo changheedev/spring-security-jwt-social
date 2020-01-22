@@ -126,7 +126,7 @@ public class UserServiceTest extends SpringTestSupport {
         assertTrue(optOAuth2Account.isPresent(), "소셜 계정 정보가 정상적으로 저장되지 않음");
 
         User linkedUser = optOAuth2Account.get().getUser();
-        assertEquals(user.getId(), linkedUser.getId(),"소셜 계정과 같은 이메일을 사용하는 계정이 연동되지 않음");
+        assertEquals(user.getId(), linkedUser.getId(), "소셜 계정과 같은 이메일을 사용하는 계정이 연동되지 않음");
     }
 
     @Test
@@ -179,6 +179,70 @@ public class UserServiceTest extends SpringTestSupport {
         //then
         assertNull(userDetails.getEmail(), "이메일 정보가 없는 소셜 서비스로 가입한 계정에 이메일 정보가 등록됨");
         assertEquals("google_123456789", userDetails.getUsername(), "소셜 서비스로 가입된 계정의 username 이 올바른 형식으로 생성되지 않음");
+    }
+
+    @Test
+    public void 계정_연동_테스트() {
+        //given
+        User user = User.builder()
+                .username("test@email.com")
+                .email("test@email.com")
+                .name("ChangHee")
+                .password(passwordEncoder.encode("password"))
+                .type(UserType.DEFAULT)
+                .build();
+        userRepository.save(user);
+
+        Map<String, Object> attributes = new HashMap<>();
+        attributes.put("id", "google");
+        attributes.put("name", "Changhee");
+        attributes.put("email", "test@gmail.com");
+        OAuth2UserInfo oAuth2UserInfo = OAuth2UserInfoFactory.getOAuth2UserInfo("google", attributes);
+        OAuth2Token oAuth2Token = new OAuth2Token("token", "refreshToken", LocalDateTime.now().plusSeconds(3600));
+
+        //when
+        userService.linkOAuth2Account(user.getUsername(), "google", oAuth2Token, oAuth2UserInfo);
+
+        //then
+        User linkedUser = userRepository.findByUsername(user.getUsername()).get();
+        assertNotNull(linkedUser.getSocial(), "계정 연동이 되지 않음");
+    }
+
+    @Test
+    public void 연동된_계정이_있는_소셜계정을_새로운_계정에_연동할때_연동실패_테스트() {
+        //given
+        User user = User.builder()
+                .username("test@email.com")
+                .email("test@email.com")
+                .name("ChangHee")
+                .password(passwordEncoder.encode("password"))
+                .type(UserType.DEFAULT)
+                .build();
+        userRepository.save(user);
+        OAuth2Account oAuth2Account = OAuth2Account.builder().provider("google").providerId("123456789").token("token").refreshToken("refresh_token").tokenExpiredAt(LocalDateTime.now().plusSeconds(3600)).build();
+        oAuth2AccountRepository.save(oAuth2Account);
+        user.linkSocial(oAuth2Account);
+
+        User newUser = User.builder()
+                .username("test2@email.com")
+                .email("test2@email.com")
+                .name("새로운 유저2")
+                .password(passwordEncoder.encode("password"))
+                .type(UserType.DEFAULT)
+                .build();
+        userRepository.save(newUser);
+
+        Map<String, Object> attributes = new HashMap<>();
+        attributes.put("id", oAuth2Account.getProviderId());
+        attributes.put("name", "Changhee");
+        attributes.put("email", "");
+        OAuth2UserInfo oAuth2UserInfo = OAuth2UserInfoFactory.getOAuth2UserInfo(oAuth2Account.getProvider(), attributes);
+        OAuth2Token oAuth2Token = new OAuth2Token("token", "refreshToken", LocalDateTime.now().plusSeconds(3600));
+
+        //then
+        assertThrows(IllegalStateException.class, () -> {
+            userService.linkOAuth2Account(newUser.getUsername(), oAuth2Account.getProvider(), oAuth2Token, oAuth2UserInfo);
+        });
     }
 
     @Test
