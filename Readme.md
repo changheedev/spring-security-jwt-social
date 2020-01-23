@@ -32,7 +32,7 @@
 3. [회원가입](docs/Signup.md)
 4. [기본 로그인](docs/Login.md)
 5. [소셜 로그인 & 계정 연동](docs/Social.md)
-6. 연동 해제
+6. [연동 해제](docs/Unlink.md)
 7. 프로필 변경
 8. [회원 탈퇴](docs/Withdraw.md)
 
