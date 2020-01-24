@@ -15,19 +15,19 @@ public class KakaoOAuth2UserInfo extends OAuth2UserInfo {
 
     @Override
     public String getName() {
-        return (String) parsingProperties().get("nickname");
+        return (String) parsingProfile().get("nickname");
     }
 
     @Override
     public String getEmail() {
-        return (String) parsingAccount().get("email");
+        return (String) parsingProperties().get("email");
     }
 
     private Map<String, Object> parsingProperties() {
-        return (Map<String, Object>) attributes.get("properties");
+        return (Map<String, Object>) attributes.get("kakao_account");
     }
 
-    private Map<String, Object> parsingAccount() {
-        return (Map<String, Object>) attributes.get("kakao_account");
+    private Map<String, Object> parsingProfile() {
+        return (Map<String, Object>)parsingProperties().get("profile");
     }
 }
