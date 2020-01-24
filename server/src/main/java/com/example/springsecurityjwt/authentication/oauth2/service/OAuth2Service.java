@@ -27,7 +27,7 @@ public abstract class OAuth2Service {
     protected final Logger log = LoggerFactory.getLogger(this.getClass());
     protected final RestTemplate restTemplate;
 
-    public OAuth2Service(RestTemplate restTemplate) {
+    protected OAuth2Service(RestTemplate restTemplate) {
         this.restTemplate = restTemplate;
     }
 
@@ -126,6 +126,7 @@ public abstract class OAuth2Service {
             throw new OAuth2RequestFailedException(String.format("%s 유저 정보 요청 실패 [응답코드 : %d].", clientRegistration.getRegistrationId().toUpperCase(), statusCode), exception);
         }
 
+        log.debug(entity.getBody());
         Map<String, Object> userAttributes = JsonUtils.fromJson(entity.getBody(), Map.class);
 
         OAuth2UserInfo userInfo = OAuth2UserInfoFactory.getOAuth2UserInfo(clientRegistration.getRegistrationId(), userAttributes);
