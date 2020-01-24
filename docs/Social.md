@@ -260,21 +260,68 @@ RestTemplate 을 이용하여 소셜 인증 서버와의 통신을 담당하는 
 
 **인증 페이지 요청, 토큰 요청, 토큰 갱신 요청, 유저 정보 요청**은 모든 소셜 서비스가 비슷하게 처리를 하고 있어서 공통 메소드로 구현했지만, 연결 해제 요청의 경우 각 소셜 서비스마다 호출에 사용되는 메소드, 파라미터 등이 상이하여 별도로 구현을 해야만 했습니다. 이 부분을 처리하기 위해 unlink() 메소드를 abstract 타입으로 선언하고 서브 클래스에서 unlink() 메소드를 구현합니다.
 
-한가지 더 주의 할 부분은 토큰 갱신 요청의 경우 공통 메소드로 구현하고 있지만, 네이버의 경우 토큰을 갱신할 때 리프레쉬 토큰은 응답 데이터에 포함되지 않기 때문에 예외 처리를 해주어야 합니다.
-
 ```java
 public abstract class OAuth2Service {
 
     protected final Logger log = LoggerFactory.getLogger(this.getClass());
     protected final RestTemplate restTemplate;
 
-    public OAuth2Service(RestTemplate restTemplate) {
+    protected OAuth2Service(RestTemplate restTemplate) {
         this.restTemplate = restTemplate;
     }
 
   
-  	//인증 페이지 요청
+    //인증 페이지 요청
     public void redirectAuthorizePage(ClientRegistration clientRegistration, String state, HttpServletResponse response) throws IOException {
+        ...
+    }
+		
+  	//접근 토큰 요청
+    public OAuth2Token getAccessToken(ClientRegistration clientRegistration, String code, String state) {
+				...
+    }
+  
+  
+		//토큰 갱신 요청
+    protected OAuth2Token refreshOAuth2Token(ClientRegistration clientRegistration, OAuth2Token token) {
+        ...
+    }
+
+    //회원 정보 요청
+    public OAuth2UserInfo getUserInfo(ClientRegistration clientRegistration, String accessToken) {
+        ...
+    }
+
+  	//연동 해제 요청
+    public abstract void unlink(ClientRegistration clientRegistration, OAuth2Token token);
+```
+
+
+
+#### 1. 인증 요청
+
+인증 요청은 유저를 OAuth 인증 서버의 인증 페이지로 리디렉션 시키는 방식으로 이루어 집니다.
+
+요청에 필요한 파라미터는 다음과 같습니다.
+
+
+
+**Parameters**
+
+| 이름                  | 필수 여부 | 설명                                                         |
+| --------------------- | --------- | ------------------------------------------------------------ |
+| response_type         | Y         | 인증에 대한 응답 타입                                        |
+| client_id             | Y         | 애플리케이션 등록 시 발급받은 Client ID 값                   |
+| redirect_uri          | Y         | 애플리케이션 등록 시 입력한 Callback URL 값                  |
+| state                 | Y         | CSRF 보호를 위한 상태 토큰값                                 |
+| scope                 | Y         | 리소스 접근 허용 범위                                        |
+| access_type           | Y         | Refresh-Token 을 발급받기 위해서는  '**offline**' 으로 설정 **(Google)** |
+| include_granted_scope | N         | 추가 Scope 에 대한 접근 요청 허가 여부 **(Google)**          |
+
+
+
+```java
+public void redirectAuthorizePage(ClientRegistration clientRegistration, String state, HttpServletResponse response) throws IOException {
         String authorizationUri = UriComponentsBuilder.fromUriString(clientRegistration.getProviderDetails().getAuthorizationUri())
                 .queryParam("client_id", clientRegistration.getClientId())
                 .queryParam("response_type", "code")
@@ -286,9 +333,124 @@ public abstract class OAuth2Service {
                 .build().encode(StandardCharsets.UTF_8).toUriString();
         response.sendRedirect(authorizationUri);
     }
-		
-  	//인증 토큰 요청
-    public OAuth2Token getAccessToken(ClientRegistration clientRegistration, String code, String state) {
+```
+
+
+
+인증 결과에 따라 다음과 같이  code, state, error 값이  Callback URL 로 전송됩니다.
+
+- API 요청 성공시 : http://콜백URL?code={code값}&state={state값}
+- API 요청 실패시 : http://콜백URL?error={에러메시지}
+
+
+
+#### 2. 토큰 요청
+
+토큰 요청부터는 Rest API 형식의 요청/응답이 이루어 지므로 RestTemplate 을 사용하여 요청을 전송합니다.
+
+토큰 요청에 필요한 파라미터는 다음과 같습니다.
+
+
+
+**Parameters**
+
+| 이름          | 필수 여부 | 설명                                           |
+| ------------- | --------- | ---------------------------------------------- |
+| grant_type    | Y         | 인증 과정을 구분하는 값                        |
+| client_id     | Y         | 애플리케이션 등록 시 발급받은 Client ID 값     |
+| client_secret | Y         | 애플리케이션 등록 시 발급받은 Client Secret 값 |
+| redirect_uri  | Y         | 애플리케이션 등록 시 입력한 Callback URL 값    |
+| code          | Y         | 인증에 성공하고 받은 인증코드                  |
+| state         | Y         | CSRF 보호를 위한 상태 토큰값                   |
+
+
+
+**Response 예시**
+
+```
+{
+  "access_token":"1/fFAGRNJru1FTz70BzhT3Zg",
+  "expires_in":3920,
+  "token_type":"Bearer",
+  "refresh_token":"1/xEoDL4iW3cxlI7yDbSRFYNG01kVKM2C-259HOF2aQbI"
+}
+```
+
+
+
+Json 포맷으로 전송된 Response body 의 데이터는 JsonObject 로 파싱이 필요한데, 구글에서 만든 Gson 라이브러리를 이용하여 Json 데이터를 Serialization/Deserialization 하는 Util 클래스를 만들어 이용하였습니다.
+
+
+
+**build.gradle**
+
+```groovy
+dependencies {
+	implementation 'com.google.code.gson:gson:2.8.6'
+}
+```
+
+
+
+```java
+public class JsonUtils {
+
+    private static JsonUtils instance;
+
+    private Gson gson;
+    private Gson prettyGson;
+
+    /**
+     * disableHtmlEscaping : Html 문자를 변환하지 않도록 설정 (&lt; &gt; 같은 문자로 변환하지 않고 < > 그대로 출력되도록)
+     * setPrettyPrinting : Json 데이터를 출력할 때 가시성이 좋도록 출력 포맷을 만들어준다.
+     */
+    private JsonUtils() {
+        gson = new GsonBuilder().disableHtmlEscaping().create();
+        prettyGson = new GsonBuilder().disableHtmlEscaping().setPrettyPrinting().create();
+    }
+
+    public static JsonUtils getInstance() {
+        if(instance == null)
+            instance = new JsonUtils();
+        return instance;
+    }
+
+    private static Gson getGson(){
+        return getInstance().gson;
+    }
+
+    private static Gson getPrettyGson(){
+        return getInstance().prettyGson;
+    }
+
+    public static JsonElement parse(String jsonStr){ return JsonParser.parseString(jsonStr);}
+
+    public static String toJson(Object obj) {
+        return getGson().toJson(obj);
+    }
+
+    public static <T> T fromJson(String jsonStr, Class<T> cls) {
+        return getGson().fromJson(jsonStr, cls);
+    }
+
+    public static <T> T fromJson(String jsonStr, Type type) {
+        return getGson().fromJson(jsonStr, type);
+    }
+
+    public static String toPrettyJson(Object obj) {
+        return getPrettyGson().toJson(obj);
+    }
+}
+```
+
+
+
+JsonUtils 클래스를 이용하여 응답 데이터를 파싱한 뒤 OAuth2Token 인스턴스를 리턴합니다.
+
+**expires_in** 의 경우 토큰의 유효기간을 초 단위로 표시한 데이터이므로 현재 시간에 expires_in 값을 더해 토큰이 만료되는 시간을 만들어 줍니다.
+
+```java
+public OAuth2Token getAccessToken(ClientRegistration clientRegistration, String code, String state) {
 
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
@@ -319,10 +481,264 @@ public abstract class OAuth2Service {
 
         return new OAuth2Token(accessToken, refreshToken, expiredAt);
     }
-  
-  
-		//토큰 갱신 요청
-    protected OAuth2Token refreshOAuth2Token(ClientRegistration clientRegistration, OAuth2Token token) {
+```
+
+
+
+#### 3. 회원 정보 요청
+
+회원 정보를 요청하기 위해서는 발급받은 접근 토큰(access token) 을 Authorization 헤더에 포함하여 API 를 호출해야 합니다.
+
+
+
+**Header**
+
+| 이름          | 필수 여부 | 설명                  |
+| ------------- | --------- | --------------------- |
+| Authorization | Y         | Bearer {Access Token} |
+
+
+
+```java
+public OAuth2UserInfo getUserInfo(ClientRegistration clientRegistration, String accessToken) {
+
+        HttpHeaders headers = new HttpHeaders();
+
+        headers.add("Authorization", "Bearer " + accessToken);
+        headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
+
+        HttpEntity<?> httpEntity = new HttpEntity<>(headers);
+
+        ResponseEntity<String> entity = null;
+        try {
+            entity = restTemplate.exchange(clientRegistration.getProviderDetails().getUserInfoUri(), HttpMethod.GET, httpEntity, String.class);
+        } catch (HttpStatusCodeException exception) {
+            int statusCode = exception.getStatusCode().value();
+            throw new OAuth2RequestFailedException(String.format("%s 유저 정보 요청 실패 [응답코드 : %d].", clientRegistration.getRegistrationId().toUpperCase(), statusCode), exception);
+        }
+
+        Map<String, Object> userAttributes = JsonUtils.fromJson(entity.getBody(), Map.class);
+
+        OAuth2UserInfo userInfo = OAuth2UserInfoFactory.getOAuth2UserInfo(clientRegistration.getRegistrationId(), userAttributes);
+
+        return userInfo;
+}
+```
+
+
+
+**Response**
+
+소셜 서비스에서 제공하는 회원 정보 데이터 포맷이 서로 다르기 때문에 각 서비스 별로 회원 정보를 파싱하는 코드를 구현해주어야 합니다.
+
+```json
+ //Google
+ {
+ 		"id":"1234567890",
+		"email":"email@gmail.com",
+	 	"verified_email":true,
+		"name":"Changhee Choi",
+ 		"given_name":"Changhee",
+ 		"family_name":"Choi",
+ 		"picture":"https://lh3.googleusercontent.com/...",
+ 		"locale":"ko"
+}
+
+//Naver
+{
+  "resultcode": "00",
+  "message": "success",
+  "response": {
+    "email": "openapi@naver.com",
+    "nickname": "OpenAPI",
+    "profile_image": "https://ssl.pstatic.net/static/pwe/address/nodata_33x33.gif",
+    "age": "40-49",
+    "gender": "F",
+    "id": "32742776",
+    "name": "오픈 API",
+    "birthday": "10-01"
+  }
+}
+
+//Kakao
+{
+  "id":123456789,
+  "properties":{
+     "nickname":"홍길동카톡",
+     "thumbnail_image":"http://xxx.kakao.co.kr/.../aaa.jpg",
+     "profile_image":"http://xxx.kakao.co.kr/.../bbb.jpg",
+     "custom_field1":"23",
+     "custom_field2":"여"
+     ...
+  },
+  "kakao_account": { 
+    "profile_needs_agreement": false,
+    "profile": {
+      "nickname": "홍길동",
+      "thumbnail_image_url": "http://yyy.kakao.com/.../img_110x110.jpg",
+      "profile_image_url": "http://yyy.kakao.com/dn/.../img_640x640.jpg"
+    },
+    "email_needs_agreement":false, 
+    "is_email_valid": true,   
+    "is_email_verified": true,   
+    "email": "xxxxxxx@xxxxx.com",
+    "age_range_needs_agreement":false,
+    "age_range":"20~29",
+    "birthday_needs_agreement":false,
+    "birthday":"1130",
+    "birthday_type":"SOLAR",
+    "gender_needs_agreement":false,
+    "gender":"female"
+  }
+}
+```
+
+
+
+abstract 클래스와 서브 클래스들을 이용하여 attribute 맵 데이터에서 id, name, email 항목을 파싱하는 코드를 구현하고 Factory 패턴으로 요청된 서비스의 UserInfo 인스턴스를 리턴하도록 구현하였습니다.
+
+```java
+public abstract class OAuth2UserInfo {
+    protected Map<String, Object> attributes;
+
+    protected OAuth2UserInfo(Map<String, Object> attributes) {
+        this.attributes = attributes;
+    }
+
+    public abstract String getId();
+
+    public abstract String getName();
+
+    public abstract String getEmail();
+}
+```
+
+```java
+public class GoogleOAuth2UserInfo extends OAuth2UserInfo {
+
+    public GoogleOAuth2UserInfo(Map<String, Object> attributes) {
+        super(attributes);
+    }
+
+    @Override
+    public String getId() {
+        return (String) attributes.get("id");
+    }
+
+    @Override
+    public String getName() {
+        return (String) attributes.get("name");
+    }
+
+    @Override
+    public String getEmail() {
+        return (String) attributes.get("email");
+    }
+}
+```
+
+```java
+public class NaverOAuth2UserInfo extends OAuth2UserInfo {
+
+    public NaverOAuth2UserInfo(Map<String, Object> attributes) {
+        super(attributes);
+    }
+
+    @Override
+    public String getId() {
+        return (String) parsingProperties().get("id");
+    }
+
+    @Override
+    public String getName() {
+        return (String) parsingProperties().get("name");
+    }
+
+    @Override
+    public String getEmail() {
+        return (String) parsingProperties().get("email");
+    }
+
+    private Map<String, Object> parsingProperties() {
+        return (Map<String, Object>) attributes.get("response");
+    }
+}
+```
+
+```java
+public class KakaoOAuth2UserInfo extends OAuth2UserInfo {
+
+    public KakaoOAuth2UserInfo(Map<String, Object> attributes) {
+        super(attributes);
+    }
+
+    @Override
+    public String getId() {
+        return String.valueOf(attributes.get("id"));
+    }
+
+    @Override
+    public String getName() {
+        return (String) parsingProfile().get("nickname");
+    }
+
+    @Override
+    public String getEmail() {
+        return (String) parsingProperties().get("email");
+    }
+
+    private Map<String, Object> parsingProperties() {
+        return (Map<String, Object>) attributes.get("kakao_account");
+    }
+
+    private Map<String, Object> parsingProfile() {
+        return (Map<String, Object>)parsingProperties().get("profile");
+    }
+}
+```
+
+```java
+public class OAuth2UserInfoFactory {
+
+    public static OAuth2UserInfo getOAuth2UserInfo(String registrationId, Map<String, Object> attributes) {
+        if(registrationId.equalsIgnoreCase("google")) {
+            return new GoogleOAuth2UserInfo(attributes);
+        } else if (registrationId.equalsIgnoreCase("kakao")) {
+            return new KakaoOAuth2UserInfo(attributes);
+        } else if (registrationId.equalsIgnoreCase("naver")) {
+            return new NaverOAuth2UserInfo(attributes);
+        } else {
+            throw new IllegalArgumentException(registrationId.toUpperCase() + " 로그인은 지원하지 않습니다.");
+        }
+    }
+}
+```
+
+
+
+#### 4. 토큰 갱신 요청
+
+토큰 갱신 요청의 경우 같은 패키지 내 OAuth2Service 서브 클래스에서 연동 해제 요청 중에 호출 됩니다. 즉, 다른 외부 패키지의 클래스에서 호출되지 않기 때문에 protected 메소드로 접근을 제어해주었습니다.
+
+토큰 갱신 요청에 필요한 파라미터는 다음과 같습니다.
+
+
+
+**Parameters**
+
+| 이름          | 필수 여부 | 설명                                            |
+| ------------- | --------- | ----------------------------------------------- |
+| grant_type    | Y         | 인증 과정을 구분하는 값                         |
+| client_id     | Y         | 애플리케이션 등록 시 발급받은 Client ID 값      |
+| client_secret | Y         | 애플리케이션 등록 시 발급받은 Client Secret 값  |
+| redirect_uri  | Y         | 토큰을 발급받을 때 함께 발급 받은 refresh token |
+
+
+
+한가지 주의할 점은 네이버의 경우 토큰 갱신 요청의 응답 데이터에 Refresh Token 이 포함되지 않기 때문에 예외 처리를 해주어야 합니다.
+
+```java
+protected OAuth2Token refreshOAuth2Token(ClientRegistration clientRegistration, OAuth2Token token) {
 
         //토큰이 만료되지 않았다면 원래 토큰을 리턴
         if (LocalDateTime.now().isBefore(token.getExpiredAt())) return token;
@@ -354,37 +770,17 @@ public abstract class OAuth2Service {
 
         return new OAuth2Token(accessToken, newRefreshToken != null ? newRefreshToken : token.getRefreshToken(), expiredAt);
     }
-
-    public OAuth2UserInfo getUserInfo(ClientRegistration clientRegistration, String accessToken) {
-
-        HttpHeaders headers = new HttpHeaders();
-
-        headers.add("Authorization", "Bearer " + accessToken);
-        headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
-
-        HttpEntity<?> httpEntity = new HttpEntity<>(headers);
-
-        ResponseEntity<String> entity = null;
-        try {
-            entity = restTemplate.exchange(clientRegistration.getProviderDetails().getUserInfoUri(), HttpMethod.GET, httpEntity, String.class);
-        } catch (HttpStatusCodeException exception) {
-            int statusCode = exception.getStatusCode().value();
-            throw new OAuth2RequestFailedException(String.format("%s 유저 정보 요청 실패 [응답코드 : %d].", clientRegistration.getRegistrationId().toUpperCase(), statusCode), exception);
-        }
-
-        Map<String, Object> userAttributes = JsonUtils.fromJson(entity.getBody(), Map.class);
-
-        OAuth2UserInfo userInfo = OAuth2UserInfoFactory.getOAuth2UserInfo(clientRegistration.getRegistrationId(), userAttributes);
-
-        return userInfo;
-    }
-
-    public abstract void unlink(ClientRegistration clientRegistration, OAuth2Token token);
 ```
 
 
 
-**unlink() 메소드 구현**
+#### 5. 연동 해제 요청
+
+연동 해제 요청이란 소셜 계정을 애플리케이션에서 연결 해제 되도록 요청하는 것으로, 소셜 계정을  애플리케이션에서 탈퇴처리 (**전체 계정의 탈퇴 X**) 하는 것과 비슷합니다 (소셜 계정 정보의 연결된 서비스에서 삭제하는 작업). 
+
+만약, 애플리케이션에서만 연동 정보를 삭제하게 되면 App 에서는 연동이 해제된 것 처럼 처리되지만 실제로는 소셜 계정이 애플리케이션에 그대로 연결되어 있게 됩니다. 따라서, OAuth 인증 서버에도 애플리케이션과 소셜 계정의 연결을 해제하는 요청을 처리해주어야 합니다.
+
+연동 해제 요청의 경우 소셜 서비스 마다 처리하는 방식이 상이하기 때문에 소셜 서비스 별 개발 가이드 문서를 확인하고 요구사항에 맞게 처리하여야 합니다.
 
 ```java
 public class GoogleOAuth2Service extends OAuth2Service{
@@ -417,9 +813,74 @@ public class GoogleOAuth2Service extends OAuth2Service{
 }
 ```
 
+```java
+public class NaverOAuth2Service extends OAuth2Service {
+
+    public NaverOAuth2Service(RestTemplate restTemplate) {
+        super(restTemplate);
+    }
+
+    @Override
+    public void unlink(ClientRegistration clientRegistration, OAuth2Token token) {
+
+        //토큰이 만료되었다면 토큰을 갱신
+        token = refreshOAuth2Token(clientRegistration, token);
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
+
+        MultiValueMap<String, String> params = new LinkedMultiValueMap<>();
+
+        params.add("client_id", clientRegistration.getClientId());
+        params.add("client_secret", clientRegistration.getClientSecret());
+        params.add("grant_type", "delete");
+        params.add("service_provider", "NAVER");
+        params.add("access_token", token.getToken());
+
+        HttpEntity<MultiValueMap<String, String>> httpEntity = new HttpEntity<>(params, headers);
+
+        ResponseEntity<String> entity = null;
+        try {
+            entity = restTemplate.exchange(clientRegistration.getProviderDetails().getUnlinkUri(), HttpMethod.POST, httpEntity, String.class);
+        } catch (HttpStatusCodeException exception) {
+            int statusCode = exception.getStatusCode().value();
+            throw new OAuth2RequestFailedException(String.format("%s 연동해제 실패. [응답코드 : %d].", clientRegistration.getRegistrationId().toUpperCase(), statusCode), exception);
+        }
+    }
+}
+```
+
+```java
+public class KakaoOAuth2Service extends OAuth2Service{
+    public KakaoOAuth2Service(RestTemplate restTemplate) {
+        super(restTemplate);
+    }
+
+    @Override
+    public void unlink(ClientRegistration clientRegistration, OAuth2Token token){
+
+        //토큰이 만료되었다면 토큰을 갱신
+        token = refreshOAuth2Token(clientRegistration, token);
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.add("Authorization", "Bearer " + token.getToken());
+
+        HttpEntity<MultiValueMap<String, String>> httpEntity = new HttpEntity<>(headers);
+
+        ResponseEntity<String> entity = null;
+        try {
+            entity = restTemplate.exchange(clientRegistration.getProviderDetails().getUnlinkUri(), HttpMethod.POST, httpEntity, String.class);
+        } catch (HttpStatusCodeException exception) {
+            int statusCode = exception.getStatusCode().value();
+            throw new OAuth2RequestFailedException(String.format("%s 연동해제 실패. [응답코드 : %d].", clientRegistration.getRegistrationId().toUpperCase(), statusCode), exception);
+        }
+    }
+}
+```
 
 
-요청에 따라 OAuth2Service 의 서브 클래스 인스턴스를  생성하기 위해 Factory 패턴을 사용하였습니다.
+
+요청된 소셜 서비스에 따라 OAuth2Service 인스턴스를  생성하기 위해 Factory 패턴을 사용하였습니다.
 
 ```java
 public class OAuth2ServiceFactory {
@@ -443,7 +904,7 @@ public class OAuth2ServiceFactory {
 
 ---
 
-클라이언트에서는 인증 성공 후 이동할 페이지와 callback 타입을 파라미터로 추가하여 소셜 인증을 요청하게 됩니다. 
+클라이언트에서는 인증 성공 후 이동할 페이지와 callback 타입을 파라미터로 추가하여 소셜 인증을 요청하게 됩니다.
 
 ```
 http://localhost:8080/api/oauth2/authorize/google?redirect_uri=http://localhost:3000/mypage&callback=login(or 'link')
@@ -469,8 +930,6 @@ public void redirectSocialAuthorizationPage(@PathVariable String provider, @Requ
     oAuth2Service.redirectAuthorizePage(clientRegistration, state, response);
 }
 ```
-
-
 
 ```java
 @Component
