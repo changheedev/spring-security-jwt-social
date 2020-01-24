@@ -391,7 +391,7 @@ public class JwtProvider {
 
 **JwtAuthenticationFilter**
 
-JwtAuthenticationFilter 에서는 request 에 인증 토큰 쿠키가 포함되어 있는지 체크한 후 토큰에 포함된 회원 정보를 이용해 새로운 Authentication 인스턴스를 생성합니다. 새로 생성된 인스턴스는 이후 Security 에서 참조될 수 있도록 SecurityContext 에 추가해줍니다.
+JwtAuthenticationFilter 에서는 request 에 접근 토큰(access token) 쿠키가 포함되어 있는지 체크한 후 토큰에 포함된 회원 정보를 이용해 새로운 Authentication 인스턴스를 생성합니다. 새로 생성된 인스턴스는 이후 Security 에서 참조될 수 있도록 SecurityContext 에 추가해줍니다.
 
 ```java
 @Component
@@ -529,7 +529,7 @@ public class AuthenticationController {
 
 
 
-로그아웃시에는 인증 토큰과 CSRF 토큰 쿠키를 삭제 처리합니다.
+로그아웃시에는 접근 토큰(access token)과 CSRF 토큰 쿠키를 삭제 처리합니다.
 
 **AuthenticationController**
 

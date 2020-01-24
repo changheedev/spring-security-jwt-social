@@ -23,7 +23,7 @@ public Optional<OAuth2AccountDTO> withdrawUser(String username) {
 
 컨트롤러에서는 서비스 레이어에서 리턴된 소셜 계정 정보를 확인 후 해당 정보를 이용해 연동 해제 요청을 보냅니다. 
 
-모든 과정이 완료되면 인증 토큰 쿠키와 CSRF 토큰 쿠키를 지워 로그아웃 처리를 합니다.
+모든 과정이 완료되면 접근 토큰(access token) 쿠키와 CSRF 토큰 쿠키를 지워 로그아웃 처리를 합니다.
 
 **UserController**
 
