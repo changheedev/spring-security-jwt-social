@@ -60,22 +60,22 @@ module.exports = {
               provider: "google",
               name: "구글",
               authUrl:
-                process.env.API_BASE_URL ||
-                "http://localhost:8080" + "/api/oauth2/authorize/google"
+                (process.env.API_BASE_URL || "http://localhost:8080") +
+                "/api/oauth2/authorize/google"
             },
             naver: {
               provider: "naver",
               name: "네이버",
               authUrl:
-                process.env.API_BASE_URL ||
-                "http://localhost:8080" + "/api/oauth2/authorize/naver"
+                (process.env.API_BASE_URL || "http://localhost:8080") +
+                "/api/oauth2/authorize/naver"
             },
             kakao: {
               provider: "kakao",
               name: "카카오",
               authUrl:
-                process.env.API_BASE_URL ||
-                "http://localhost:8080" + "/api/oauth2/authorize/kakao"
+                (process.env.API_BASE_URL || "http://localhost:8080") +
+                "/api/oauth2/authorize/kakao"
             }
           },
           unlink: {
