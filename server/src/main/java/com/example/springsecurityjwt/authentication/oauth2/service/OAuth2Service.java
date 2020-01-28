@@ -6,6 +6,7 @@ import com.example.springsecurityjwt.authentication.oauth2.OAuth2Token;
 import com.example.springsecurityjwt.authentication.oauth2.userInfo.OAuth2UserInfo;
 import com.example.springsecurityjwt.authentication.oauth2.userInfo.OAuth2UserInfoFactory;
 import com.example.springsecurityjwt.util.JsonUtils;
+import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -21,6 +22,7 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.util.Map;
+import java.util.Optional;
 
 public abstract class OAuth2Service {
 
@@ -103,10 +105,10 @@ public abstract class OAuth2Service {
         JsonObject jsonObj = JsonUtils.parse(entity.getBody()).getAsJsonObject();
         String accessToken = jsonObj.get("access_token").getAsString();
         //naver의 경우는 null
-        String newRefreshToken = jsonObj.get("refresh_token").getAsString();
+        Optional<JsonElement> optionalNewRefreshToken = Optional.ofNullable(jsonObj.get("refresh_token"));
         LocalDateTime expiredAt = LocalDateTime.now().plusSeconds(jsonObj.get("expires_in").getAsLong());
 
-        return new OAuth2Token(accessToken, newRefreshToken != null ? newRefreshToken : token.getRefreshToken(), expiredAt);
+        return new OAuth2Token(accessToken, optionalNewRefreshToken.isPresent() ? optionalNewRefreshToken.get().getAsString() : token.getRefreshToken(), expiredAt);
     }
 
     public OAuth2UserInfo getUserInfo(ClientRegistration clientRegistration, String accessToken) {
