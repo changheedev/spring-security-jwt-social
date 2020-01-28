@@ -765,10 +765,10 @@ protected OAuth2Token refreshOAuth2Token(ClientRegistration clientRegistration, 
         JsonObject jsonObj = JsonUtils.parse(entity.getBody()).getAsJsonObject();
         String accessToken = jsonObj.get("access_token").getAsString();
         //naver의 경우는 null
-        String newRefreshToken = jsonObj.get("refresh_token").getAsString();
+        Optional<JsonElement> optionalNewRefreshToken = Optional.ofNullable(jsonObj.get("refresh_token"));
         LocalDateTime expiredAt = LocalDateTime.now().plusSeconds(jsonObj.get("expires_in").getAsLong());
 
-        return new OAuth2Token(accessToken, newRefreshToken != null ? newRefreshToken : token.getRefreshToken(), expiredAt);
+        return new OAuth2Token(accessToken, optionalNewRefreshToken.isPresent() ? optionalNewRefreshToken.get().getAsString() : token.getRefreshToken(), expiredAt);
     }
 ```
 
