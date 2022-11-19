@@ -17,7 +17,7 @@
     "@nuxtjs/moment": "^1.5.0",
     "bootstrap-vue": "^2.1.0",
     "cookie-universal-nuxt": "^2.1.0",
-    "nuxt": "^2.0.0"
+    "nuxt": "^2.15.8"
   },
   "devDependencies": {
     "babel-eslint": "^10.0.1",
